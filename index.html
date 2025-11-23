@@ -36,7 +36,7 @@
             border-radius: 50%;
             z-index: 9999;
             pointer-events: none;
-            mix-blend-mode: difference; /* 让光标在白色背景上变黑，黑色上变白 */
+            mix-blend-mode: difference;
         }
 
         .cursor-dot {
@@ -52,13 +52,70 @@
             transition: width 0.2s, height 0.2s, background-color 0.2s;
         }
 
-        /* 鼠标悬停交互状态 */
         body.hovering .cursor-outline {
             width: 80px;
             height: 80px;
             background-color: rgba(204, 255, 0, 0.2);
             border-color: var(--accent-color);
             backdrop-filter: blur(2px);
+        }
+
+        /* --- 导航栏高级样式 --- */
+        #mainNav {
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            border-bottom: 1px solid transparent;
+        }
+
+        #mainNav.scrolled {
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 0.75rem; /* py-3 equivalent */
+            padding-bottom: 0.75rem;
+        }
+
+        .nav-link {
+            position: relative;
+            font-family: 'Space Grotesk', monospace;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            overflow: hidden;
+            transition: color 0.3s;
+            display: inline-block;
+        }
+
+        /* 导航滑块效果 */
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--accent-color);
+            transform: scaleX(0);
+            transform-origin: right;
+            transition: transform 0.3s cubic-bezier(0.7, 0, 0.3, 1);
+            z-index: -1;
+        }
+
+        .nav-link:hover {
+            color: #000; /* 悬停时文字变黑 */
+        }
+
+        .nav-link:hover::before {
+            transform: scaleX(1);
+            transform-origin: left;
+        }
+
+        /* 光标闪烁动画 */
+        .blink-cursor {
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
         }
 
         /* --- 噪点背景 --- */
@@ -74,7 +131,7 @@
             background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
         }
 
-        /* --- 故障文字特效 (Glitch Text) --- */
+        /* --- 故障文字特效 --- */
         .glitch-wrapper {
             position: relative;
             display: inline-block;
@@ -132,7 +189,7 @@
             100% { clip: rect(78px, 9999px, 11px, 0); }
         }
 
-        /* --- 滚动进度条 (放在右侧) --- */
+        /* --- 滚动进度条 --- */
         .scroll-progress {
             position: fixed;
             top: 0;
@@ -202,15 +259,43 @@
     </style>
 </head>
 <body>
-    <nav class="fixed top-0 left-0 w-full bg-black/80 backdrop-blur-md z-50 py-3 px-6 flex justify-between items-center">
-    <div class="text-white font-bold text-lg tracking-wider">MY STAR</div>
-    <ul class="flex space-x-6">
-        <li><a href="#hero" class="hover:text-[#ccff00] transition">序幕</a></li>
-        <li><a href="#about" class="hover:text-[#ccff00] transition">本质</a></li>
-        <li><a href="#work" class="hover:text-[#ccff00] transition">产出</a></li>
-        <li><a href="#contact" class="hover:text-[#ccff00] transition">链接</a></li>
-    </ul>
-</nav>
+    
+    <!-- 全新设计的导航栏 -->
+    <nav id="mainNav" class="fixed top-0 left-0 w-full z-50 py-6 px-8 flex justify-between items-center transition-all duration-300">
+        <!-- 左侧 Logo 区域 -->
+        <a href="#hero" class="group flex items-center gap-3 hover-trigger">
+            <!-- 旋转方块图标 -->
+            <div class="w-3 h-3 bg-[#ccff00] rotate-45 group-hover:rotate-180 transition-transform duration-500"></div>
+            <div class="text-white font-bold text-xl tracking-widest font-mono flex items-center">
+                MY STAR<span class="text-[#ccff00] blink-cursor ml-1">_</span>
+            </div>
+        </a>
+
+        <!-- 右侧菜单区域 -->
+    <ul class="flex space-x-2 md:space-x-4">
+    <li>
+        <a href="#hero" class="nav-link hover-trigger text-xl md:text-2xl font-extrabold" style="font-family: 'Space Grotesk', sans-serif;">
+            序幕
+        </a>
+    </li>
+    <li>
+        <a href="#about" class="nav-link hover-trigger text-xl md:text-2xl font-extrabold" style="font-family: 'Space Grotesk', sans-serif;">
+            本质
+        </a>
+    </li>
+    <li>
+        <a href="#work" class="nav-link hover-trigger text-xl md:text-2xl font-extrabold" style="font-family: 'Space Grotesk', sans-serif;">
+            产出
+        </a>
+    </li>
+    <li>
+        <a href="#contact" class="nav-link hover-trigger text-xl md:text-2xl font-extrabold" style="font-family: 'Space Grotesk', sans-serif;">
+            链接
+        </a>
+    </li>
+</ul>
+
+    </nav>
 
     <!-- 噪点遮罩 -->
     <div class="noise-bg"></div>
@@ -222,15 +307,12 @@
     <div class="cursor-dot" id="cursorDot"></div>
     <div class="cursor-outline" id="cursorOutline"></div>
 
-    <!-- 导航 (固定在左下角) 已经删除了-->
-
     <!-- 01. HERO SECTION -->
     <section id="hero" class="section relative overflow-hidden">
         <!-- 动态背景 Canvas -->
         <canvas id="heroCanvas" class="absolute inset-0 w-full h-full z-0 opacity-40"></canvas>
         
         <div class="relative z-10 container mx-auto">
-            <!-- <p class="text-[#ccff00] font-mono mb-4 text-xl tracking-widest typewriter">System.init(User);</p> -->
             <div class="glitch-wrapper">
                 <h1 class="glitch text-8xl md:text-[10rem] leading-none" data-text="CREATIVE">CREATIVE</h1>
             </div>
@@ -269,7 +351,7 @@
                     厌倦了千篇一律的 Bootstrap 风格和 Material Design。我相信网页应该是狂野的、富有表现力的画布，而不仅仅是信息的容器。
                 </p>
                 
-                <div class="mt-8 flex gap-4 font-mono text-sm">
+                <div class="mt-8 flex gap-4 font-mono text-sm flex-wrap">
                     <span class="border border-black px-3 py-1 rounded-full hover:bg-black hover:text-white transition cursor-default hover-trigger">React.js</span>
                     <span class="border border-black px-3 py-1 rounded-full hover:bg-black hover:text-white transition cursor-default hover-trigger">Three.js</span>
                     <span class="border border-black px-3 py-1 rounded-full hover:bg-black hover:text-white transition cursor-default hover-trigger">WebGL</span>
@@ -404,12 +486,24 @@
             });
         });
 
-        // --- 2. 页面滚动进度条 ---
+        // --- 2. 页面滚动进度条 & 导航栏变形 ---
+        const nav = document.getElementById('mainNav');
+
         window.addEventListener('scroll', () => {
             const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
             const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
             const scrolled = (winScroll / height) * 100;
             document.getElementById("progressBar").style.height = scrolled + "%";
+
+            // 导航栏滚动逻辑
+            if (winScroll > 50) {
+                nav.classList.add('scrolled');
+                nav.classList.remove('py-6');
+                // padding 由 css .scrolled 控制
+            } else {
+                nav.classList.remove('scrolled');
+                nav.classList.add('py-6');
+            }
         });
 
         // --- 3. Hero背景 Canvas 矩阵粒子效果 ---
@@ -491,5 +585,3 @@
     </script>
 </body>
 </html>
-
-
