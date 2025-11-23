@@ -1,467 +1,723 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="dark">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YOLO 目标检测 - 赛博朋克版</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        cyber: {
-                            purple: '#b026ff',
-                            blue: '#00d4ff',
-                            pink: '#ff00a0',
-                            dark: '#0a0a12',
-                            darker: '#050508',
-                        },
-                    },
-                    animation: {
-                        'spin-slow': 'spin 3s linear infinite',
-                        'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
-                        'fade-in': 'fade-in 0.5s ease-out',
-                        'slide-up': 'slide-up 0.5s ease-out',
-                    },
-                    keyframes: {
-                        'pulse-glow': {
-                            '0%, 100%': { boxShadow: '0 0 10px #00d4ff, 0 0 20px #b026ff' },
-                            '50%': { boxShadow: '0 0 20px #00d4ff, 0 0 40px #b026ff' },
-                        },
-                        'fade-in': {
-                            '0%': { opacity: '0' },
-                            '100%': { opacity: '1' },
-                        },
-                        'slide-up': {
-                            '0%': { transform: 'translateY(20px)', opacity: '0' },
-                            '100%': { transform: 'translateY(0)', opacity: '1' },
-                        },
-                    },
-                },
-            },
+    <title>沉浸式星空模拟 - Starry Sky</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* 防止出现滚动条 */
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-    </script>
-    <style type="text/tailwindcss">
-        @layer components {
-            .cyber-card {
-                @apply bg-cyber-dark border border-cyber-blue/30 rounded-2xl p-6 shadow-lg backdrop-blur-sm relative overflow-hidden transition-all duration-300 hover:border-cyber-pink/50 hover:shadow-cyber-pink/20;
-            }
-            .cyber-card::before {
-                content: '';
-                @apply absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyber-purple via-cyber-blue to-cyber-pink opacity-50;
-            }
-            .cyber-button {
-                @apply relative px-6 py-3 font-bold text-white rounded-lg overflow-hidden transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-cyber-blue focus:ring-offset-2 focus:ring-offset-cyber-dark;
-                background: linear-gradient(45deg, #b026ff, #00d4ff);
-            }
-            .cyber-button::before {
-                content: '';
-                @apply absolute inset-0 bg-gradient-to-r from-cyber-pink to-cyber-purple opacity-0 transition-opacity duration-300;
-            }
-            .cyber-button:hover::before {
-                @apply opacity-100;
-            }
-            .cyber-button span {
-                @apply relative z-10 flex items-center justify-center gap-2;
-            }
-            .cyber-button.stop {
-                background: linear-gradient(45deg, #ff00a0, #ff4d4d);
-            }
-            .cyber-button.stop::before {
-                background: linear-gradient(45deg, #ff4d4d, #ff00a0);
-            }
-            .cyber-input-group {
-                @apply mb-6 p-4 rounded-xl bg-cyber-darker/50 border border-white/5 transition-all duration-300 hover:border-cyber-blue/30;
-            }
-            .cyber-file-input {
-                @apply block w-full text-sm text-gray-400
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-full file:border-0
-                file:text-sm file:font-semibold
-                file:bg-cyber-blue/10 file:text-cyber-blue
-                hover:file:bg-cyber-blue/20
-                cursor-pointer;
-            }
+
+        /* 背景渐变，模拟地平线微光 */
+        .background-gradient {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+            z-index: -1;
         }
-        body {
-            background-color: #050508;
-            background-image: 
-                radial-gradient(circle at 20% 30%, rgba(176, 38, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 70%, rgba(0, 212, 255, 0.1) 0%, transparent 50%);
-            min-height: 100vh;
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
-        .bg-grid {
-            background-size: 50px 50px;
-            background-image: 
-                linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-            mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+
+        /* 中心的文字标题样式 */
+        .overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            z-index: 10;
+            pointer-events: none; /* 让鼠标事件穿透文字，不影响Canvas交互 */
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            transition: opacity 0.5s ease;
         }
+
+        /* 隐藏 overlay 的类 */
+        .overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 300;
+            letter-spacing: 10px;
+            margin: 0;
+            opacity: 0.9;
+        }
+
+        p {
+            font-size: 1rem;
+            color: #aab;
+            margin-top: 10px;
+            letter-spacing: 2px;
+            opacity: 0.7;
+        }
+
+        /* --- 新增 Gemini 功能 UI 样式 --- */
+        
+        /* 底部触发按钮 */
+        .ask-btn-container {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+        }
+
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        /* 对话框 Modal */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 30;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .glass-panel {
+            width: 90%;
+            max-width: 500px;
+            background: rgba(20, 30, 50, 0.6); /* 深蓝色半透明 */
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            color: white;
+            position: relative;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .modal-backdrop.active .glass-panel {
+            transform: translateY(0);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        
+        .close-btn:hover { opacity: 1; }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 300;
+            text-align: center;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+            color: #e0e6ed;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: none;
+            box-sizing: border-box; /* 重要 */
+            outline: none;
+        }
+
+        textarea:focus {
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .action-btn:hover { opacity: 0.9; }
+        .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 响应区域 */
+        #response-area {
+            margin-top: 10px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            animation: fadeIn 0.5s ease;
+        }
+
+        .response-text {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            font-style: italic;
+            color: #d1d5db;
+            margin-bottom: 15px;
+            min-height: 60px;
+        }
+
+        .control-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover { background: rgba(255, 255, 255, 0.1); }
+        .icon-btn.playing { color: #764ba2; background: white; border-color: white; }
+
+        /* Loading 动画 */
+        .loading {
+            text-align: center;
+            color: #aab;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .hidden { display: none !important; }
     </style>
 </head>
-<body class="text-gray-200 font-sans">
-    <div class="fixed inset-0 bg-grid pointer-events-none"></div>
+<body>
+
+    <div class="background-gradient"></div>
     
-    <div class="container mx-auto px-4 py-12 relative z-10">
-        <header class="text-center mb-12 animate-fade-in">
-            <h1 class="text-5xl md:text-7xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-cyber-purple via-cyber-blue to-cyber-pink animate-pulse-glow">
-                📷 YOLO 目标检测
-            </h1>
-        </header>
+    <!-- 文字层 -->
+    <div class="overlay" id="main-title">
+        <h1>STARRY NIGHT</h1>
+        <p>静谧星空 · 移动鼠标体验视差</p>
+    </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-slide-up">
-            <!-- 左侧：输入区域 -->
-            <div class="cyber-card">
-                <h3 class="text-2xl font-bold mb-6 flex items-center text-cyber-blue">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    输入源
-                </h3>
-                
-                <div class="cyber-input-group">
-                    <p class="text-lg font-semibold mb-3 text-cyber-pink">图片检测</p>
-                    <input type="file" id="img-upload" accept="image/*" class="cyber-file-input">
-                </div>
-                
-                <div class="cyber-input-group group">
-                    <p class="text-lg font-semibold mb-3 text-cyber-purple">视频检测</p>
-                    <input type="file" id="video-upload" accept="video/*" class="cyber-file-input mb-3">
-                    <button id="start-video-detect" class="cyber-button stop w-full hidden group-hover:flex">
-                        <span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
-                            </svg>
-                            开始视频检测
-                        </span>
-                    </button>
-                </div>
-                
-                <div class="cyber-input-group">
-                    <p class="text-lg font-semibold mb-3 text-cyber-blue">摄像头检测</p>
-                    <div class="flex gap-4">
-                        <button onclick="startCamera()" class="cyber-button flex-1">
-                            <span>
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l4 2A1 1 0 0020 14V6a1 1 0 00-1.447-.894l-4 2z" />
-                                </svg>
-                                开启摄像头
-                            </span>
-                        </button>
-                        <button onclick="stopCamera()" class="cyber-button stop flex-1">
-                            <span>
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" />
-                                </svg>
-                                关闭
-                            </span>
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="mt-6 p-4 bg-cyber-darker/50 rounded-xl border border-white/5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <span class="inline-flex items-center justify-center h-10 w-10 rounded-full bg-cyber-blue/20 text-cyber-blue">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </span>
-                        </div>
-                        <div class="ml-4">
-                            <h4 class="text-lg font-bold text-cyber-blue">系统状态</h4>
-                            <div class="status text-gray-400" id="status">就绪</div>
-                        </div>
-                    </div>
-                </div>
+    <!-- 触发按钮 -->
+    <div class="ask-btn-container">
+        <button class="glass-btn" onclick="openModal()">
+            ✨ 聆听宇宙
+        </button>
+    </div>
 
-                <div class="mt-6 rounded-xl overflow-hidden border-2 border-dashed border-cyber-blue/30 min-h-[200px] flex items-center justify-center bg-cyber-darker/30 relative">
-                    <video id="camera" autoplay playsinline class="w-full h-auto hidden rounded-xl"></video>
-                    <video id="uploaded-video" controls class="w-full h-auto hidden rounded-xl"></video>
-                    <img id="uploaded-img" class="w-full h-auto hidden rounded-xl">
-                    <div id="input-placeholder" class="text-center text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <p>预览区域</p>
-                    </div>
-                </div>
-            </div>
+    <!-- 对话框 -->
+    <div class="modal-backdrop" id="starModal" onclick="handleBackdropClick(event)">
+        <div class="glass-panel">
+            <div class="close-btn" onclick="closeModal()">&times;</div>
+            <div class="modal-title">向群星提问</div>
             
-            <!-- 右侧：结果显示区域 -->
-            <div class="cyber-card">
-                <h3 class="text-2xl font-bold mb-6 flex items-center text-cyber-pink">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    检测结果
-                </h3>
-                <div id="result-container" class="rounded-xl overflow-hidden border-2 border-dashed border-cyber-pink/30 min-h-[400px] flex items-center justify-center bg-cyber-darker/30 relative transition-all duration-500">
-                    <img id="result-img" class="w-full h-auto hidden rounded-xl shadow-lg shadow-cyber-pink/20 transition-opacity duration-500">
-                    <video id="result-video" controls class="w-full h-auto hidden rounded-xl shadow-lg shadow-cyber-pink/20 transition-opacity duration-500"></video>
-                    <div id="result-placeholder" class="text-center text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 mx-auto mb-4 opacity-50 animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                        </svg>
-                        <p class="text-xl">等待检测结果...</p>
-                    </div>
-                    <!-- 加载动画覆盖层 -->
-                    <div id="loading-overlay" class="absolute inset-0 bg-cyber-dark/80 backdrop-blur-sm flex flex-col items-center justify-center hidden transition-opacity duration-300 z-20">
-                        <div class="w-16 h-16 border-4 border-cyber-blue border-t-transparent rounded-full animate-spin mb-4"></div>
-                        <p class="text-cyber-blue font-bold animate-pulse">AI 正在分析中...</p>
-                    </div>
+            <textarea id="userPrompt" placeholder="写下你的心事、愿望，或者想问宇宙的问题..."></textarea>
+            
+            <button id="sendBtn" class="action-btn" onclick="askTheStars()">发送信号</button>
+            
+            <div id="loadingState" class="loading hidden">
+                <div class="spinner"></div> 正在接收来自光年之外的讯息...
+            </div>
+
+            <div id="response-area" class="hidden">
+                <div class="response-text" id="starResponse"></div>
+                <div class="control-bar">
+                    <button class="icon-btn" id="ttsBtn" title="播放声音" onclick="playStarVoice()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
+    <canvas id="starCanvas"></canvas>
+
     <script>
-        let cameraStream = null;
-        let detectionInterval = null;
-        let videoDetectionActive = false;
-        const apiUrl = "http://127.0.0.1:5000/detect"; 
+        const canvas = document.getElementById('starCanvas');
+        const ctx = canvas.getContext('2d');
 
-        const inputPlaceholder = document.getElementById('input-placeholder');
-        const resultPlaceholder = document.getElementById('result-placeholder');
-        const loadingOverlay = document.getElementById('loading-overlay');
+        let width, height;
+        let stars = [];
+        let meteors = [];
+        
+        // 鼠标位置，用于视差效果
+        let mouse = { x: 0, y: 0 };
+        // 视差偏移量
+        let offset = { x: 0, y: 0 };
 
-        function showLoading() {
-            loadingOverlay.classList.remove('hidden');
-            resultPlaceholder.classList.add('hidden');
+        // 配置参数
+        const config = {
+            starCount: 800,       // 星星数量 (根据屏幕大小会自动调整)
+            meteorChance: 0.02,   // 流星出现的概率 (0-1)
+            baseStarSpeed: 0.05,  // 星星闪烁速度基数
+        };
+
+        // --- Gemini API Integration ---
+        const apiKey = ""; // API Key will be injected by the environment
+
+        let currentAudio = null;
+
+        function openModal() {
+            document.getElementById('starModal').classList.add('active');
+            document.getElementById('main-title').classList.add('hidden');
+            document.getElementById('userPrompt').focus();
         }
 
-        function hideLoading() {
-            loadingOverlay.classList.add('hidden');
+        function closeModal() {
+            document.getElementById('starModal').classList.remove('active');
+            document.getElementById('main-title').classList.remove('hidden');
+            stopAudio();
         }
 
-        function showInputMedia(type) {
-            inputPlaceholder.classList.add('hidden');
-            document.getElementById("uploaded-img").classList.add('hidden');
-            document.getElementById("uploaded-video").classList.add('hidden');
-            document.getElementById("camera").classList.add('hidden');
-            
-            if (type) {
-                document.getElementById(type).classList.remove('hidden');
-            } else {
-                inputPlaceholder.classList.remove('hidden');
+        function handleBackdropClick(e) {
+            if (e.target === document.getElementById('starModal')) {
+                closeModal();
             }
         }
 
-        function showResultMedia(type) {
-            resultPlaceholder.classList.add('hidden');
-            document.getElementById("result-img").classList.add('hidden');
-            document.getElementById("result-video").classList.add('hidden');
+        // 核心功能 1：向 Gemini 提问
+        async function askTheStars() {
+            const prompt = document.getElementById('userPrompt').value.trim();
+            if (!prompt) return;
+
+            // UI 状态更新
+            const sendBtn = document.getElementById('sendBtn');
+            const loading = document.getElementById('loadingState');
+            const responseArea = document.getElementById('response-area');
+            const responseText = document.getElementById('starResponse');
             
-            if (type) {
-                document.getElementById(type).classList.remove('hidden');
-                // 添加淡入动画
-                setTimeout(() => {
-                    document.getElementById(type).classList.add('opacity-100');
-                }, 50);
-            } else {
-                resultPlaceholder.classList.remove('hidden');
+            sendBtn.disabled = true;
+            loading.classList.remove('hidden');
+            responseArea.classList.add('hidden');
+            stopAudio(); // 停止之前的播放
+
+            try {
+                // 构建请求
+                const systemPrompt = "你是一个古老、智慧、温柔的宇宙之灵（Star Spirit）。用户会向你倾诉心事或提问。请用充满诗意、宁静、深邃的语言回答。多使用星空、银河、光年、星尘、引力、轨道等天文学意象作为隐喻。语气要治愈、空灵。回答请控制在 80 字以内，短小精悍。用中文回答。";
+                
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) throw new Error(data.error.message);
+                
+                const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "星星似乎沉默了...";
+                
+                // 显示结果
+                responseText.innerText = aiText;
+                responseArea.classList.remove('hidden');
+
+                // 自动准备 TTS (可选：如果想自动播放可以这里调用)
+
+            } catch (error) {
+                console.error("Star Error:", error);
+                responseText.innerText = "信号在穿越黑洞时丢失了...请稍后再试。";
+                responseArea.classList.remove('hidden');
+            } finally {
+                loading.classList.add('hidden');
+                sendBtn.disabled = false;
             }
         }
 
-        // 初始化视频上传事件监听
-        document.getElementById("video-upload").addEventListener("change", (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        // 核心功能 2：Gemini TTS (语音合成)
+        async function playStarVoice() {
+            const text = document.getElementById('starResponse').innerText;
+            const btn = document.getElementById('ttsBtn');
             
-            stopAllDetctions();
-            showInputMedia("uploaded-video");
-            
-            const video = document.getElementById("uploaded-video");
-            video.src = URL.createObjectURL(file);
-            
-            document.getElementById("start-video-detect").classList.remove('hidden');
-            updateStatus("请点击开始视频检测");
-        });
-
-        // 开始视频检测
-        document.getElementById("start-video-detect").addEventListener("click", async () => {
-            const btn = document.getElementById("start-video-detect");
-            if (videoDetectionActive) {
-                stopAllDetctions();
+            if (!text) return;
+            if (currentAudio && !currentAudio.paused) {
+                stopAudio();
                 return;
             }
-            
-            const video = document.getElementById("uploaded-video");
-            videoDetectionActive = true;
-            updateStatus("正在检测视频...");
-            btn.innerHTML = `<span><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" /></svg>停止视频检测</span>`;
-            
-            video.play();
-            showLoading();
-            
-            detectionInterval = setInterval(async () => {
-                if (video.ended) {
-                    stopAllDetctions();
-                    updateStatus("视频检测完成");
-                    hideLoading();
-                    return;
-                }
-                
-                const canvas = document.createElement("canvas");
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                canvas.getContext("2d").drawImage(video, 0, 0);
-                
-                const imgBase64 = canvas.toDataURL("image/jpeg").split(",")[1];
-                
-                try {
-                    const result = await fetch(apiUrl, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ image: imgBase64 })
-                    }).then(res => res.json());
-                    
-                    if (result.status === "success") {
-                        const resultImg = document.getElementById("result-img");
-                        resultImg.src = `data:image/jpg;base64,${result.image}`;
-                        showResultMedia("result-img");
-                        hideLoading();
-                    }
-                } catch (error) {
-                    console.error("检测出错:", error);
-                    updateStatus("检测出错，请重试");
-                    hideLoading();
-                }
-            }, 300);
-        });
 
-        // 1. 上传图片检测
-        document.getElementById("img-upload").addEventListener("change", async (e) => {
-            stopAllDetctions();
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            showInputMedia("uploaded-img");
-            
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                const imgBase64 = event.target.result.split(",")[1];
-                const imgElement = document.getElementById("uploaded-img");
-                imgElement.src = event.target.result;
-                updateStatus("正在检测图片...");
-                showLoading();
-                
-                try {
-                    const result = await fetch(apiUrl, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ image: imgBase64 })
-                    }).then(res => res.json());
-                    
-                    if (result.status === "success") {
-                        const resultImg = document.getElementById("result-img");
-                        resultImg.src = `data:image/jpg;base64,${result.image}`;
-                        showResultMedia("result-img");
-                        updateStatus("图片检测完成");
-                    } else {
-                        alert("检测失败：" + result.msg);
-                        updateStatus("检测失败");
-                    }
-                } catch (error) {
-                    console.error("检测出错:", error);
-                    updateStatus("检测出错，请重试");
-                } finally {
-                    hideLoading();
-                }
-            };
-            reader.readAsDataURL(file);
-        });
+            // 改变按钮状态为加载中
+            btn.style.opacity = '0.5';
 
-        // 2. 开启摄像头实时检测
-        async function startCamera() {
-            stopAllDetctions();
-            showInputMedia("camera");
-            const video = document.getElementById("camera");
-            
             try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = cameraStream;
-                updateStatus("摄像头检测中...");
-                showLoading();
-                
-                detectionInterval = setInterval(async () => {
-                    const canvas = document.createElement("canvas");
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    canvas.getContext("2d").drawImage(video, 0, 0);
-                    
-                    const imgBase64 = canvas.toDataURL("image/jpeg").split(",")[1];
-                    
-                    try {
-                        const result = await fetch(apiUrl, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ image: imgBase64 })
-                        }).then(res => res.json());
-                        
-                        if (result.status === "success") {
-                            const resultImg = document.getElementById("result-img");
-                            resultImg.src = `data:image/jpg;base64,${result.image}`;
-                            showResultMedia("result-img");
-                            hideLoading();
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: text }] }],
+                        generationConfig: {
+                            responseModalities: ["AUDIO"],
+                            speechConfig: {
+                                voiceConfig: {
+                                    prebuiltVoiceConfig: {
+                                        voiceName: "Aoede" // Aoede 听起来比较空灵，适合星空
+                                    }
+                                }
+                            }
                         }
-                    } catch (error) {
-                        console.error("检测出错:", error);
-                        hideLoading();
-                    }
-                }, 500);
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.candidates && data.candidates[0].content.parts[0].inlineData) {
+                    const audioData = data.candidates[0].content.parts[0].inlineData.data;
+                    const sampleRate = 24000; // Gemini TTS 默认通常是 24k
+                    
+                    // 转换 PCM 到 WAV 并播放
+                    const wavBytes = pcmToWav(base64ToArrayBuffer(audioData), sampleRate);
+                    const blob = new Blob([wavBytes], { type: 'audio/wav' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    if (currentAudio) stopAudio();
+                    
+                    currentAudio = new Audio(url);
+                    currentAudio.onended = () => {
+                        btn.classList.remove('playing');
+                    };
+                    
+                    currentAudio.play();
+                    btn.classList.add('playing');
+                }
+
             } catch (error) {
-                console.error("无法访问摄像头:", error);
-                updateStatus("无法访问摄像头");
-                alert("无法访问摄像头: " + error.message);
-                showInputMedia();
-                hideLoading();
+                console.error("Voice Error:", error);
+            } finally {
+                btn.style.opacity = '1';
             }
         }
 
-        // 3. 关闭摄像头
-        function stopCamera() {
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(track => track.stop());
-                showInputMedia();
-                updateStatus("摄像头已关闭");
+        function stopAudio() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
             }
-            if (detectionInterval) {
-                clearInterval(detectionInterval);
-                detectionInterval = null;
-            }
-            hideLoading();
-            showResultMedia(); // 清除结果显示
+            document.getElementById('ttsBtn').classList.remove('playing');
         }
 
-        // 停止所有检测
-        function stopAllDetctions() {
-            stopCamera();
+        // 辅助函数：Base64 转 ArrayBuffer
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        // 辅助函数：PCM 转 WAV
+        function pcmToWav(pcmData, sampleRate = 24000, numChannels = 1, bitDepth = 16) {
+            const headerLength = 44;
+            const dataLength = pcmData.byteLength;
+            const buffer = new ArrayBuffer(headerLength + dataLength);
+            const view = new DataView(buffer);
+
+            // RIFF chunk descriptor
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + dataLength, true);
+            writeString(view, 8, 'WAVE');
+
+            // fmt sub-chunk
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
+            view.setUint16(20, 1, true); // AudioFormat (1 for PCM)
+            view.setUint16(22, numChannels, true); // NumChannels
+            view.setUint32(24, sampleRate, true); // SampleRate
+            view.setUint32(28, sampleRate * numChannels * (bitDepth / 8), true); // ByteRate
+            view.setUint16(32, numChannels * (bitDepth / 8), true); // BlockAlign
+            view.setUint16(34, bitDepth, true); // BitsPerSample
+
+            // data sub-chunk
+            writeString(view, 36, 'data');
+            view.setUint32(40, dataLength, true);
+
+            // Write PCM data
+            const pcmBytes = new Uint8Array(pcmData);
+            const wavBytes = new Uint8Array(buffer);
+            wavBytes.set(pcmBytes, 44);
+
+            return buffer;
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        // 初始化画布尺寸
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
             
-            if (videoDetectionActive) {
-                clearInterval(detectionInterval);
-                videoDetectionActive = false;
-                const btn = document.getElementById("start-video-detect");
-                btn.innerHTML = `<span><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>开始视频检测</span>`;
-                btn.classList.add('hidden'); // 停止后隐藏按钮，等待下次选择文件
-                document.getElementById("uploaded-video").pause();
-                showInputMedia(); // 清除输入显示
-                showResultMedia(); // 清除结果显示
-            }
-            hideLoading();
+            // 重新计算中心点
+            mouse.x = width / 2;
+            mouse.y = height / 2;
+
+            initStars();
         }
 
-        // 更新状态信息
-        function updateStatus(text) {
-            const statusEl = document.getElementById("status");
-            statusEl.textContent = text;
-            // 添加一个简单的闪烁动画来提示状态更新
-            statusEl.classList.remove('animate-pulse');
-            void statusEl.offsetWidth; // 触发重绘
-            statusEl.classList.add('animate-pulse');
+        // 监听鼠标移动
+        window.addEventListener('mousemove', (e) => {
+            // 计算鼠标相对于中心点的偏移，用于视差
+            offset.x = (e.clientX - width / 2) * 0.05; 
+            offset.y = (e.clientY - height / 2) * 0.05;
+        });
+
+        // 移动端触摸支持
+        window.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            offset.x = (touch.clientX - width / 2) * 0.05;
+            offset.y = (touch.clientY - height / 2) * 0.05;
+        });
+
+        // 星星类
+        class Star {
+            constructor() {
+                this.reset();
+                // 初始化时随机给一个透明度，避免所有星星同时闪烁
+                this.opacity = Math.random(); 
+            }
+
+            reset() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.z = Math.random() * 1.5 + 0.5; // 深度/大小因子 (0.5 - 2.0)
+                this.fullSize = this.z * 1.2;       // 实际渲染大小
+                this.opacity = 0;                   // 初始透明度
+                this.fadeDirection = 1;             // 1为变亮，-1为变暗
+                this.fadeSpeed = Math.random() * 0.03 + 0.005; // 闪烁速度
+            }
+
+            update() {
+                // 闪烁逻辑
+                this.opacity += this.fadeSpeed * this.fadeDirection;
+                if (this.opacity >= 1) {
+                    this.opacity = 1;
+                    this.fadeDirection = -1;
+                } else if (this.opacity <= 0.2) {
+                    this.opacity = 0.2;
+                    this.fadeDirection = 1;
+                }
+            }
+
+            draw() {
+                // 计算视差位置：离得越近(z越大)，移动幅度越大
+                const parallaxX = this.x - (offset.x * this.z);
+                const parallaxY = this.y - (offset.y * this.z);
+
+                ctx.beginPath();
+                ctx.arc(parallaxX, parallaxY, this.fullSize, 0, Math.PI * 2);
+                
+                // 颜色：带一点点蓝色的白
+                ctx.fillStyle = `rgba(220, 230, 255, ${this.opacity})`;
+                
+                // 发光效果 (性能消耗较大，若卡顿可注释掉下面两行)
+                ctx.shadowBlur = this.fullSize * 2;
+                ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+                
+                ctx.fill();
+                ctx.shadowBlur = 0; // 重置阴影，避免影响流星
+            }
         }
+
+        // 流星类
+        class Meteor {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                // 从右上方或者上方随机位置出现
+                this.x = Math.random() * width + 200; 
+                this.y = Math.random() * -100; 
+                
+                this.size = Math.random() * 2 + 1;
+                this.speed = Math.random() * 10 + 15; // 速度
+                this.len = Math.random() * 150 + 80;  // 尾巴长度
+                
+                //流星的角度 (左下方飞)
+                this.angle = Math.PI / 4 + (Math.random() * 0.1); 
+                
+                this.dx = -Math.cos(this.angle) * this.speed;
+                this.dy = Math.sin(this.angle) * this.speed;
+                
+                this.life = 1; // 生命值/透明度
+                this.decay = Math.random() * 0.02 + 0.01; // 消失速度
+            }
+
+            update() {
+                this.x += this.dx;
+                this.y += this.dy;
+                this.life -= this.decay;
+
+                // 如果彻底消失或飞出屏幕，重置流星
+                if (this.life <= 0 || this.x < -200 || this.y > height + 200) {
+                    // 为了不让流星太频繁，只有很小几率立刻重置，大部分时候移除
+                     return false; // 返回false表示需要移除
+                }
+                return true;
+            }
+
+            draw() {
+                // 计算视差
+                const px = this.x - (offset.x * 1.2);
+                const py = this.y - (offset.y * 1.2);
+
+                ctx.save();
+                ctx.translate(px, py);
+                ctx.rotate(this.angle + Math.PI); // 旋转到飞行方向
+
+                // 绘制流星尾巴 (渐变)
+                const gradient = ctx.createLinearGradient(0, 0, this.len, 0);
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${this.life})`);
+                gradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
+
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                // 绘制水滴状流星
+                ctx.moveTo(0, 0);
+                ctx.lineTo(this.len, -this.size); // 尾巴上沿
+                ctx.lineTo(this.len, this.size);  // 尾巴下沿
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        function initStars() {
+            stars = [];
+            // 动态计算星星数量：屏幕面积 / 常数
+            const dynamicCount = Math.floor((width * height) / 2500);
+            // 限制最大最小数量
+            const finalCount = Math.min(Math.max(dynamicCount, 200), 1500);
+
+            for (let i = 0; i < finalCount; i++) {
+                stars.push(new Star());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 绘制所有星星
+            stars.forEach(star => {
+                star.update();
+                star.draw();
+            });
+
+            // 随机生成流星
+            if (Math.random() < config.meteorChance) {
+                meteors.push(new Meteor());
+            }
+
+            // 更新并绘制流星
+            for (let i = meteors.length - 1; i >= 0; i--) {
+                const active = meteors[i].update();
+                if (active) {
+                    meteors[i].draw();
+                } else {
+                    meteors.splice(i, 1); // 移除死掉的流星
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // 监听窗口大小变化
+        window.addEventListener('resize', resize);
+
+        // 启动
+        resize();
+        animate();
+
     </script>
 </body>
 </html>
