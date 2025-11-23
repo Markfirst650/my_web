@@ -3,718 +3,487 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>沉浸式星空模拟 - Starry Sky</title>
+    <title>个人主页</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden; /* 防止出现滚动条 */
-            background-color: #000;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        /* --- 核心字体与重置 --- */
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&family=Noto+Sans+SC:wght@400;900&display=swap');
+
+        :root {
+            --bg-color: #0a0a0a;
+            --text-color: #f0f0f0;
+            --accent-color: #ccff00; /* 酸性绿 */
+            --secondary-color: #ff003c; /* 故障红 */
         }
 
-        /* 背景渐变，模拟地平线微光 */
-        .background-gradient {
-            position: absolute;
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Space Grotesk', 'Noto Sans SC', sans-serif;
+            overflow-x: hidden;
+            cursor: none; /* 隐藏默认鼠标 */
+        }
+
+        /* --- 自定义光标系统 --- */
+        .cursor-dot,
+        .cursor-outline {
+            position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
-            z-index: -1;
-        }
-
-        canvas {
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
-
-        /* 中心的文字标题样式 */
-        .overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
             transform: translate(-50%, -50%);
-            text-align: center;
-            color: white;
-            z-index: 10;
-            pointer-events: none; /* 让鼠标事件穿透文字，不影响Canvas交互 */
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-            transition: opacity 0.5s ease;
-        }
-
-        /* 隐藏 overlay 的类 */
-        .overlay.hidden {
-            opacity: 0;
+            border-radius: 50%;
+            z-index: 9999;
             pointer-events: none;
+            mix-blend-mode: difference; /* 让光标在白色背景上变黑，黑色上变白 */
         }
 
-        h1 {
-            font-size: 3rem;
-            font-weight: 300;
-            letter-spacing: 10px;
-            margin: 0;
-            opacity: 0.9;
+        .cursor-dot {
+            width: 8px;
+            height: 8px;
+            background-color: white;
         }
 
-        p {
-            font-size: 1rem;
-            color: #aab;
-            margin-top: 10px;
-            letter-spacing: 2px;
-            opacity: 0.7;
+        .cursor-outline {
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: width 0.2s, height 0.2s, background-color 0.2s;
         }
 
-        /* --- 新增 Gemini 功能 UI 样式 --- */
-        
-        /* 底部触发按钮 */
-        .ask-btn-container {
-            position: absolute;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 20;
+        /* 鼠标悬停交互状态 */
+        body.hovering .cursor-outline {
+            width: 80px;
+            height: 80px;
+            background-color: rgba(204, 255, 0, 0.2);
+            border-color: var(--accent-color);
+            backdrop-filter: blur(2px);
         }
 
-        .glass-btn {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 12px 30px;
-            border-radius: 50px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            letter-spacing: 2px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
-        }
-
-        .glass-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 0 25px rgba(255, 255, 255, 0.3);
-            transform: scale(1.05);
-        }
-
-        /* 对话框 Modal */
-        .modal-backdrop {
+        /* --- 噪点背景 --- */
+        .noise-bg {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            z-index: 30;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
             pointer-events: none;
-            transition: opacity 0.3s ease;
+            z-index: 999;
+            opacity: 0.05;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
         }
 
-        .modal-backdrop.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .glass-panel {
-            width: 90%;
-            max-width: 500px;
-            background: rgba(20, 30, 50, 0.6); /* 深蓝色半透明 */
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-            color: white;
+        /* --- 故障文字特效 (Glitch Text) --- */
+        .glitch-wrapper {
             position: relative;
-            transform: translateY(20px);
-            transition: transform 0.3s ease;
+            display: inline-block;
+        }
+
+        .glitch {
+            position: relative;
+            color: var(--text-color);
+            font-weight: 900;
+            letter-spacing: -2px;
+            text-transform: uppercase;
+        }
+
+        .glitch::before,
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glitch::before {
+            left: 2px;
+            text-shadow: -1px 0 var(--secondary-color);
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim 5s infinite linear alternate-reverse;
+        }
+
+        .glitch::after {
+            left: -2px;
+            text-shadow: -1px 0 var(--accent-color);
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim2 5s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim {
+            0% { clip: rect(14px, 9999px, 127px, 0); }
+            5% { clip: rect(81px, 9999px, 81px, 0); }
+            10% { clip: rect(104px, 9999px, 86px, 0); }
+            15% { clip: rect(8px, 9999px, 12px, 0); }
+            20% { clip: rect(135px, 9999px, 5px, 0); }
+            25% { clip: rect(63px, 9999px, 5px, 0); }
+            100% { clip: rect(27px, 9999px, 56px, 0); }
+        }
+
+        @keyframes glitch-anim2 {
+            0% { clip: rect(61px, 9999px, 52px, 0); }
+            5% { clip: rect(113px, 9999px, 102px, 0); }
+            10% { clip: rect(21px, 9999px, 73px, 0); }
+            15% { clip: rect(138px, 9999px, 53px, 0); }
+            20% { clip: rect(23px, 9999px, 34px, 0); }
+            25% { clip: rect(100px, 9999px, 7px, 0); }
+            100% { clip: rect(78px, 9999px, 11px, 0); }
+        }
+
+        /* --- 滚动进度条 (放在右侧) --- */
+        .scroll-progress {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 10px;
+            height: 0%;
+            background-color: var(--accent-color);
+            z-index: 100;
+        }
+
+        /* --- 布局样式 --- */
+        .section {
+            min-height: 100vh;
+            position: relative;
+            padding: 4rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            justify-content: center;
         }
 
-        .modal-backdrop.active .glass-panel {
-            transform: translateY(0);
-        }
-
-        .close-btn {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            font-size: 1.5rem;
-            cursor: pointer;
-            opacity: 0.6;
-            transition: opacity 0.2s;
+        .big-border-text {
+            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3);
+            color: transparent;
+            transition: all 0.3s;
         }
         
-        .close-btn:hover { opacity: 1; }
-
-        .modal-title {
-            font-size: 1.5rem;
-            font-weight: 300;
-            text-align: center;
-            letter-spacing: 3px;
-            margin-bottom: 10px;
-            color: #e0e6ed;
+        .hover-reveal:hover .big-border-text {
+            color: var(--accent-color);
+            -webkit-text-stroke: 0;
         }
 
-        textarea {
-            width: 100%;
-            height: 100px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 15px;
-            color: white;
-            font-size: 1rem;
-            font-family: inherit;
-            resize: none;
-            box-sizing: border-box; /* 重要 */
-            outline: none;
+        /* 卡片粗野主义边框 */
+        .brutal-card {
+            border: 1px solid white;
+            transition: all 0.3s;
+            position: relative;
+            background: rgba(255,255,255,0.02);
+        }
+        .brutal-card:hover {
+            background: var(--accent-color);
+            color: black;
+            transform: translate(-10px, -10px);
+            box-shadow: 10px 10px 0px white;
         }
 
-        textarea:focus {
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .action-btn {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 10px;
-            color: white;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: opacity 0.2s;
+        /* 跑马灯 */
+        .marquee-container {
+            overflow: hidden;
+            white-space: nowrap;
+            position: absolute;
+            opacity: 0.1;
+            font-size: 10rem;
             font-weight: bold;
-            letter-spacing: 1px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .marquee-content {
+            display: inline-block;
+            animation: marquee 20s linear infinite;
+        }
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
         }
 
-        .action-btn:hover { opacity: 0.9; }
-        .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        /* 响应区域 */
-        #response-area {
-            margin-top: 10px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            animation: fadeIn 0.5s ease;
-        }
-
-        .response-text {
-            font-size: 1.1rem;
-            line-height: 1.6;
-            font-style: italic;
-            color: #d1d5db;
-            margin-bottom: 15px;
-            min-height: 60px;
-        }
-
-        .control-bar {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-
-        .icon-btn {
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .icon-btn:hover { background: rgba(255, 255, 255, 0.1); }
-        .icon-btn.playing { color: #764ba2; background: white; border-color: white; }
-
-        /* Loading 动画 */
-        .loading {
-            text-align: center;
-            color: #aab;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-        .spinner {
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top: 2px solid #fff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div class="background-gradient"></div>
+    <!-- 噪点遮罩 -->
+    <div class="noise-bg"></div>
     
-    <!-- 文字层 -->
-    <div class="overlay" id="main-title">
-        <h1>STARRY NIGHT</h1>
-        <p>静谧星空 · 移动鼠标体验视差</p>
-    </div>
+    <!-- 滚动进度 -->
+    <div class="scroll-progress" id="progressBar"></div>
 
-    <!-- 触发按钮 -->
-    <div class="ask-btn-container">
-        <button class="glass-btn" onclick="openModal()">
-            ✨ 聆听宇宙
-        </button>
-    </div>
+    <!-- 自定义光标 -->
+    <div class="cursor-dot" id="cursorDot"></div>
+    <div class="cursor-outline" id="cursorOutline"></div>
 
-    <!-- 对话框 -->
-    <div class="modal-backdrop" id="starModal" onclick="handleBackdropClick(event)">
-        <div class="glass-panel">
-            <div class="close-btn" onclick="closeModal()">&times;</div>
-            <div class="modal-title">向群星提问</div>
-            
-            <textarea id="userPrompt" placeholder="写下你的心事、愿望，或者想问宇宙的问题..."></textarea>
-            
-            <button id="sendBtn" class="action-btn" onclick="askTheStars()">发送信号</button>
-            
-            <div id="loadingState" class="loading hidden">
-                <div class="spinner"></div> 正在接收来自光年之外的讯息...
+    <!-- 导航 (固定在左下角) -->
+    <nav class="fixed bottom-10 left-10 z-50 mix-blend-difference hidden md:block">
+        <ul class="space-y-2 text-sm font-bold tracking-widest">
+            <li><a href="#hero" class="hover-trigger hover:text-[#ccff00] transition">01. 序幕</a></li>
+            <li><a href="#about" class="hover-trigger hover:text-[#ccff00] transition">02. 本质</a></li>
+            <li><a href="#work" class="hover-trigger hover:text-[#ccff00] transition">03. 产出</a></li>
+            <li><a href="#contact" class="hover-trigger hover:text-[#ccff00] transition">04. 链接</a></li>
+        </ul>
+    </nav>
+
+    <!-- 01. HERO SECTION -->
+    <section id="hero" class="section relative overflow-hidden">
+        <!-- 动态背景 Canvas -->
+        <canvas id="heroCanvas" class="absolute inset-0 w-full h-full z-0 opacity-40"></canvas>
+        
+        <div class="relative z-10 container mx-auto">
+            <!-- <p class="text-[#ccff00] font-mono mb-4 text-xl tracking-widest typewriter">System.init(User);</p> -->
+            <div class="glitch-wrapper">
+                <h1 class="glitch text-8xl md:text-[10rem] leading-none" data-text="CREATIVE">CREATIVE</h1>
             </div>
-
-            <div id="response-area" class="hidden">
-                <div class="response-text" id="starResponse"></div>
-                <div class="control-bar">
-                    <button class="icon-btn" id="ttsBtn" title="播放声音" onclick="playStarVoice()">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-                    </button>
-                </div>
+            <div class="glitch-wrapper block">
+                <h1 class="glitch text-8xl md:text-[10rem] leading-none" data-text="DEVELOPER">DEVELOPER</h1>
+            </div>
+            
+            <div class="mt-12 flex items-center gap-6">
+                <div class="w-24 h-1 bg-white"></div>
+                <p class="text-xl md:text-2xl max-w-lg font-light text-gray-400">
+                    我不写代码，我重构<span class="text-white font-bold">现实</span>。<br>
+                    打破规则，重塑秩序。
+                </p>
             </div>
         </div>
-    </div>
 
-    <canvas id="starCanvas"></canvas>
+        <div class="absolute bottom-10 right-10 animate-bounce">
+            <span class="text-xs font-mono">SCROLL TO EXPLORE ↓</span>
+        </div>
+    </section>
+
+    <!-- 02. ABOUT SECTION -->
+    <section id="about" class="section bg-white text-black relative">
+        <div class="marquee-container top-20 text-black">
+            <div class="marquee-content">WHO AM I ? WHO AM I ? WHO AM I ? WHO AM I ?</div>
+        </div>
+
+        <div class="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 z-10">
+            <div class="flex flex-col justify-center">
+                <h2 class="text-6xl md:text-8xl font-black mb-8 tracking-tighter">关于<br>本体</h2>
+                <div class="w-full h-[2px] bg-black mb-8"></div>
+                <p class="text-xl md:text-2xl font-bold leading-relaxed">
+                    我是一名全栈开发者，也是一名视觉设计师。但我更愿意称自己为 <span class="bg-black text-[#ccff00] px-2">数字游侠</span>。
+                </p>
+                <p class="mt-4 text-lg text-gray-600">
+                    厌倦了千篇一律的 Bootstrap 风格和 Material Design。我相信网页应该是狂野的、富有表现力的画布，而不仅仅是信息的容器。
+                </p>
+                
+                <div class="mt-8 flex gap-4 font-mono text-sm">
+                    <span class="border border-black px-3 py-1 rounded-full hover:bg-black hover:text-white transition cursor-default hover-trigger">React.js</span>
+                    <span class="border border-black px-3 py-1 rounded-full hover:bg-black hover:text-white transition cursor-default hover-trigger">Three.js</span>
+                    <span class="border border-black px-3 py-1 rounded-full hover:bg-black hover:text-white transition cursor-default hover-trigger">WebGL</span>
+                    <span class="border border-black px-3 py-1 rounded-full hover:bg-black hover:text-white transition cursor-default hover-trigger">Blender</span>
+                </div>
+            </div>
+            
+            <!-- 视觉图：一个纯CSS画的抽象图形 -->
+            <div class="relative flex items-center justify-center">
+                <div class="w-64 h-64 border-4 border-black rotate-45 absolute hover-trigger transition duration-500 hover:rotate-90 hover:scale-110 hover:bg-[#ccff00]"></div>
+                <div class="w-64 h-64 border-4 border-black -rotate-12 absolute hover-trigger transition duration-500 hover:-rotate-45 hover:scale-90 hover:bg-[#ff003c]"></div>
+                <div class="w-full h-full absolute flex items-center justify-center mix-blend-difference text-white font-bold text-9xl select-none">?</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 03. WORK SECTION -->
+    <section id="work" class="section">
+        <div class="container mx-auto">
+            <div class="flex justify-between items-end mb-16">
+                <h2 class="text-5xl md:text-7xl font-bold text-[#ccff00]">精选项目</h2>
+                <span class="font-mono text-gray-500">SELECTED_WORKS_2024</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Project 1 -->
+                <a href="#" class="group hover-trigger">
+                    <div class="brutal-card h-96 p-6 flex flex-col justify-between">
+                        <div class="font-mono text-xs border-b border-gray-600 pb-2 flex justify-between">
+                            <span>001</span>
+                            <span>WEB APP</span>
+                        </div>
+                        <div>
+                            <h3 class="text-4xl font-bold mb-2 group-hover:italic">赛博<br>金融大屏</h3>
+                            <p class="text-sm opacity-60 mt-4 group-hover:opacity-100">为一家FinTech公司设计的超现实数据可视化后台。</p>
+                        </div>
+                        <div class="self-end">
+                            <span class="text-2xl">↗</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Project 2 -->
+                <a href="#" class="group hover-trigger">
+                    <div class="brutal-card h-96 p-6 flex flex-col justify-between" style="border-color: #ff003c;">
+                        <div class="font-mono text-xs border-b border-gray-600 pb-2 flex justify-between">
+                            <span>002</span>
+                            <span>ART</span>
+                        </div>
+                        <div>
+                            <h3 class="text-4xl font-bold mb-2 group-hover:italic">生成式<br>NFT合集</h3>
+                            <p class="text-sm opacity-60 mt-4 group-hover:opacity-100">基于p5.js的算法艺术生成器。</p>
+                        </div>
+                        <div class="self-end">
+                            <span class="text-2xl">↗</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Project 3 -->
+                <a href="#" class="group hover-trigger">
+                    <div class="brutal-card h-96 p-6 flex flex-col justify-between">
+                        <div class="font-mono text-xs border-b border-gray-600 pb-2 flex justify-between">
+                            <span>003</span>
+                            <span>DESIGN</span>
+                        </div>
+                        <div>
+                            <h3 class="text-4xl font-bold mb-2 group-hover:italic">无声<br>黑白摄影</h3>
+                            <p class="text-sm opacity-60 mt-4 group-hover:opacity-100">个人摄影作品集，极简主义风格。</p>
+                        </div>
+                        <div class="self-end">
+                            <span class="text-2xl">↗</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 04. CONTACT SECTION -->
+    <section id="contact" class="section bg-[#ccff00] text-black">
+        <div class="container mx-auto text-center hover-reveal">
+            <p class="font-mono mb-4 text-xl">准备好开始了吗？</p>
+            <a href="mailto:hello@example.com" class="hover-trigger relative inline-block">
+                <h2 class="text-[12vw] font-black leading-none big-border-text cursor-none">
+                    SAY HELLO
+                </h2>
+                <h2 class="text-[12vw] font-black leading-none absolute top-0 left-0 w-full text-black opacity-0 transition hover:opacity-100 cursor-none transform hover:-translate-y-4 hover:translate-x-4">
+                    SAY HELLO
+                </h2>
+            </a>
+            
+            <div class="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 border-t border-black pt-8 text-left font-bold font-mono">
+                <a href="#" class="hover:underline hover-trigger">GITHUB</a>
+                <a href="#" class="hover:underline hover-trigger">TWITTER / X</a>
+                <a href="#" class="hover:underline hover-trigger">INSTAGRAM</a>
+                <a href="#" class="hover:underline hover-trigger">LINKEDIN</a>
+            </div>
+            
+            <footer class="mt-20 text-xs font-mono opacity-60">
+                &copy; 2024 UNNAMED. DESIGNED WITH CHAOS.
+            </footer>
+        </div>
+    </section>
 
     <script>
-        const canvas = document.getElementById('starCanvas');
+        // --- 1. 自定义光标逻辑 ---
+        const cursorDot = document.getElementById('cursorDot');
+        const cursorOutline = document.getElementById('cursorOutline');
+        const hoverTriggers = document.querySelectorAll('.hover-trigger');
+
+        window.addEventListener('mousemove', (e) => {
+            const posX = e.clientX;
+            const posY = e.clientY;
+
+            // 点是实时跟随
+            cursorDot.style.left = `${posX}px`;
+            cursorDot.style.top = `${posY}px`;
+
+            // 圆圈有延迟动画效果
+            cursorOutline.animate({
+                left: `${posX}px`,
+                top: `${posY}px`
+            }, { duration: 500, fill: "forwards" });
+        });
+
+        // 悬停效果
+        hoverTriggers.forEach(trigger => {
+            trigger.addEventListener('mouseenter', () => {
+                document.body.classList.add('hovering');
+            });
+            trigger.addEventListener('mouseleave', () => {
+                document.body.classList.remove('hovering');
+            });
+        });
+
+        // --- 2. 页面滚动进度条 ---
+        window.addEventListener('scroll', () => {
+            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            document.getElementById("progressBar").style.height = scrolled + "%";
+        });
+
+        // --- 3. Hero背景 Canvas 矩阵粒子效果 ---
+        const canvas = document.getElementById('heroCanvas');
         const ctx = canvas.getContext('2d');
-
         let width, height;
-        let stars = [];
-        let meteors = [];
-        
-        // 鼠标位置，用于视差效果
-        let mouse = { x: 0, y: 0 };
-        // 视差偏移量
-        let offset = { x: 0, y: 0 };
+        let particles = [];
 
-        // 配置参数
-        const config = {
-            starCount: 800,       // 星星数量 (根据屏幕大小会自动调整)
-            meteorChance: 0.02,   // 流星出现的概率 (0-1)
-            baseStarSpeed: 0.05,  // 星星闪烁速度基数
-        };
-
-        // --- Gemini API Integration ---
-        const apiKey = ""; // API Key will be injected by the environment
-
-        let currentAudio = null;
-
-        function openModal() {
-            document.getElementById('starModal').classList.add('active');
-            document.getElementById('main-title').classList.add('hidden');
-            document.getElementById('userPrompt').focus();
-        }
-
-        function closeModal() {
-            document.getElementById('starModal').classList.remove('active');
-            document.getElementById('main-title').classList.remove('hidden');
-            stopAudio();
-        }
-
-        function handleBackdropClick(e) {
-            if (e.target === document.getElementById('starModal')) {
-                closeModal();
-            }
-        }
-
-        // 核心功能 1：向 Gemini 提问
-        async function askTheStars() {
-            const prompt = document.getElementById('userPrompt').value.trim();
-            if (!prompt) return;
-
-            // UI 状态更新
-            const sendBtn = document.getElementById('sendBtn');
-            const loading = document.getElementById('loadingState');
-            const responseArea = document.getElementById('response-area');
-            const responseText = document.getElementById('starResponse');
-            
-            sendBtn.disabled = true;
-            loading.classList.remove('hidden');
-            responseArea.classList.add('hidden');
-            stopAudio(); // 停止之前的播放
-
-            try {
-                // 构建请求
-                const systemPrompt = "你是一个古老、智慧、温柔的宇宙之灵（Star Spirit）。用户会向你倾诉心事或提问。请用充满诗意、宁静、深邃的语言回答。多使用星空、银河、光年、星尘、引力、轨道等天文学意象作为隐喻。语气要治愈、空灵。回答请控制在 80 字以内，短小精悍。用中文回答。";
-                
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        systemInstruction: { parts: [{ text: systemPrompt }] }
-                    })
-                });
-
-                const data = await response.json();
-                
-                if (data.error) throw new Error(data.error.message);
-                
-                const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "星星似乎沉默了...";
-                
-                // 显示结果
-                responseText.innerText = aiText;
-                responseArea.classList.remove('hidden');
-
-                // 自动准备 TTS (可选：如果想自动播放可以这里调用)
-
-            } catch (error) {
-                console.error("Star Error:", error);
-                responseText.innerText = "信号在穿越黑洞时丢失了...请稍后再试。";
-                responseArea.classList.remove('hidden');
-            } finally {
-                loading.classList.add('hidden');
-                sendBtn.disabled = false;
-            }
-        }
-
-        // 核心功能 2：Gemini TTS (语音合成)
-        async function playStarVoice() {
-            const text = document.getElementById('starResponse').innerText;
-            const btn = document.getElementById('ttsBtn');
-            
-            if (!text) return;
-            if (currentAudio && !currentAudio.paused) {
-                stopAudio();
-                return;
-            }
-
-            // 改变按钮状态为加载中
-            btn.style.opacity = '0.5';
-
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: text }] }],
-                        generationConfig: {
-                            responseModalities: ["AUDIO"],
-                            speechConfig: {
-                                voiceConfig: {
-                                    prebuiltVoiceConfig: {
-                                        voiceName: "Aoede" // Aoede 听起来比较空灵，适合星空
-                                    }
-                                }
-                            }
-                        }
-                    })
-                });
-
-                const data = await response.json();
-                
-                if (data.candidates && data.candidates[0].content.parts[0].inlineData) {
-                    const audioData = data.candidates[0].content.parts[0].inlineData.data;
-                    const sampleRate = 24000; // Gemini TTS 默认通常是 24k
-                    
-                    // 转换 PCM 到 WAV 并播放
-                    const wavBytes = pcmToWav(base64ToArrayBuffer(audioData), sampleRate);
-                    const blob = new Blob([wavBytes], { type: 'audio/wav' });
-                    const url = URL.createObjectURL(blob);
-                    
-                    if (currentAudio) stopAudio();
-                    
-                    currentAudio = new Audio(url);
-                    currentAudio.onended = () => {
-                        btn.classList.remove('playing');
-                    };
-                    
-                    currentAudio.play();
-                    btn.classList.add('playing');
-                }
-
-            } catch (error) {
-                console.error("Voice Error:", error);
-            } finally {
-                btn.style.opacity = '1';
-            }
-        }
-
-        function stopAudio() {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
-            }
-            document.getElementById('ttsBtn').classList.remove('playing');
-        }
-
-        // 辅助函数：Base64 转 ArrayBuffer
-        function base64ToArrayBuffer(base64) {
-            const binaryString = window.atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
-        }
-
-        // 辅助函数：PCM 转 WAV
-        function pcmToWav(pcmData, sampleRate = 24000, numChannels = 1, bitDepth = 16) {
-            const headerLength = 44;
-            const dataLength = pcmData.byteLength;
-            const buffer = new ArrayBuffer(headerLength + dataLength);
-            const view = new DataView(buffer);
-
-            // RIFF chunk descriptor
-            writeString(view, 0, 'RIFF');
-            view.setUint32(4, 36 + dataLength, true);
-            writeString(view, 8, 'WAVE');
-
-            // fmt sub-chunk
-            writeString(view, 12, 'fmt ');
-            view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
-            view.setUint16(20, 1, true); // AudioFormat (1 for PCM)
-            view.setUint16(22, numChannels, true); // NumChannels
-            view.setUint32(24, sampleRate, true); // SampleRate
-            view.setUint32(28, sampleRate * numChannels * (bitDepth / 8), true); // ByteRate
-            view.setUint16(32, numChannels * (bitDepth / 8), true); // BlockAlign
-            view.setUint16(34, bitDepth, true); // BitsPerSample
-
-            // data sub-chunk
-            writeString(view, 36, 'data');
-            view.setUint32(40, dataLength, true);
-
-            // Write PCM data
-            const pcmBytes = new Uint8Array(pcmData);
-            const wavBytes = new Uint8Array(buffer);
-            wavBytes.set(pcmBytes, 44);
-
-            return buffer;
-        }
-
-        function writeString(view, offset, string) {
-            for (let i = 0; i < string.length; i++) {
-                view.setUint8(offset + i, string.charCodeAt(i));
-            }
-        }
-
-        // 初始化画布尺寸
         function resize() {
             width = window.innerWidth;
             height = window.innerHeight;
             canvas.width = width;
             canvas.height = height;
-            
-            // 重新计算中心点
-            mouse.x = width / 2;
-            mouse.y = height / 2;
-
-            initStars();
+            initParticles();
         }
 
-        // 监听鼠标移动
-        window.addEventListener('mousemove', (e) => {
-            // 计算鼠标相对于中心点的偏移，用于视差
-            offset.x = (e.clientX - width / 2) * 0.05; 
-            offset.y = (e.clientY - height / 2) * 0.05;
-        });
-
-        // 移动端触摸支持
-        window.addEventListener('touchmove', (e) => {
-            const touch = e.touches[0];
-            offset.x = (touch.clientX - width / 2) * 0.05;
-            offset.y = (touch.clientY - height / 2) * 0.05;
-        });
-
-        // 星星类
-        class Star {
+        class Particle {
             constructor() {
-                this.reset();
-                // 初始化时随机给一个透明度，避免所有星星同时闪烁
-                this.opacity = Math.random(); 
-            }
-
-            reset() {
                 this.x = Math.random() * width;
                 this.y = Math.random() * height;
-                this.z = Math.random() * 1.5 + 0.5; // 深度/大小因子 (0.5 - 2.0)
-                this.fullSize = this.z * 1.2;       // 实际渲染大小
-                this.opacity = 0;                   // 初始透明度
-                this.fadeDirection = 1;             // 1为变亮，-1为变暗
-                this.fadeSpeed = Math.random() * 0.03 + 0.005; // 闪烁速度
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = Math.random() * 2 - 1;
+                this.speedY = Math.random() * 2 - 1;
+                this.color = Math.random() > 0.5 ? '#ccff00' : '#ffffff';
             }
-
             update() {
-                // 闪烁逻辑
-                this.opacity += this.fadeSpeed * this.fadeDirection;
-                if (this.opacity >= 1) {
-                    this.opacity = 1;
-                    this.fadeDirection = -1;
-                } else if (this.opacity <= 0.2) {
-                    this.opacity = 0.2;
-                    this.fadeDirection = 1;
-                }
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x > width) this.x = 0;
+                if (this.x < 0) this.x = width;
+                if (this.y > height) this.y = 0;
+                if (this.y < 0) this.y = height;
             }
-
             draw() {
-                // 计算视差位置：离得越近(z越大)，移动幅度越大
-                const parallaxX = this.x - (offset.x * this.z);
-                const parallaxY = this.y - (offset.y * this.z);
-
+                ctx.fillStyle = this.color;
                 ctx.beginPath();
-                ctx.arc(parallaxX, parallaxY, this.fullSize, 0, Math.PI * 2);
-                
-                // 颜色：带一点点蓝色的白
-                ctx.fillStyle = `rgba(220, 230, 255, ${this.opacity})`;
-                
-                // 发光效果 (性能消耗较大，若卡顿可注释掉下面两行)
-                ctx.shadowBlur = this.fullSize * 2;
-                ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
-                
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.shadowBlur = 0; // 重置阴影，避免影响流星
             }
         }
 
-        // 流星类
-        class Meteor {
-            constructor() {
-                this.reset();
-            }
-
-            reset() {
-                // 从右上方或者上方随机位置出现
-                this.x = Math.random() * width + 200; 
-                this.y = Math.random() * -100; 
-                
-                this.size = Math.random() * 2 + 1;
-                this.speed = Math.random() * 10 + 15; // 速度
-                this.len = Math.random() * 150 + 80;  // 尾巴长度
-                
-                //流星的角度 (左下方飞)
-                this.angle = Math.PI / 4 + (Math.random() * 0.1); 
-                
-                this.dx = -Math.cos(this.angle) * this.speed;
-                this.dy = Math.sin(this.angle) * this.speed;
-                
-                this.life = 1; // 生命值/透明度
-                this.decay = Math.random() * 0.02 + 0.01; // 消失速度
-            }
-
-            update() {
-                this.x += this.dx;
-                this.y += this.dy;
-                this.life -= this.decay;
-
-                // 如果彻底消失或飞出屏幕，重置流星
-                if (this.life <= 0 || this.x < -200 || this.y > height + 200) {
-                    // 为了不让流星太频繁，只有很小几率立刻重置，大部分时候移除
-                     return false; // 返回false表示需要移除
-                }
-                return true;
-            }
-
-            draw() {
-                // 计算视差
-                const px = this.x - (offset.x * 1.2);
-                const py = this.y - (offset.y * 1.2);
-
-                ctx.save();
-                ctx.translate(px, py);
-                ctx.rotate(this.angle + Math.PI); // 旋转到飞行方向
-
-                // 绘制流星尾巴 (渐变)
-                const gradient = ctx.createLinearGradient(0, 0, this.len, 0);
-                gradient.addColorStop(0, `rgba(255, 255, 255, ${this.life})`);
-                gradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
-
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                // 绘制水滴状流星
-                ctx.moveTo(0, 0);
-                ctx.lineTo(this.len, -this.size); // 尾巴上沿
-                ctx.lineTo(this.len, this.size);  // 尾巴下沿
-                ctx.fill();
-
-                ctx.restore();
-            }
-        }
-
-        function initStars() {
-            stars = [];
-            // 动态计算星星数量：屏幕面积 / 常数
-            const dynamicCount = Math.floor((width * height) / 2500);
-            // 限制最大最小数量
-            const finalCount = Math.min(Math.max(dynamicCount, 200), 1500);
-
-            for (let i = 0; i < finalCount; i++) {
-                stars.push(new Star());
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < 100; i++) {
+                particles.push(new Particle());
             }
         }
 
         function animate() {
             ctx.clearRect(0, 0, width, height);
-
-            // 绘制所有星星
-            stars.forEach(star => {
-                star.update();
-                star.draw();
-            });
-
-            // 随机生成流星
-            if (Math.random() < config.meteorChance) {
-                meteors.push(new Meteor());
-            }
-
-            // 更新并绘制流星
-            for (let i = meteors.length - 1; i >= 0; i--) {
-                const active = meteors[i].update();
-                if (active) {
-                    meteors[i].draw();
-                } else {
-                    meteors.splice(i, 1); // 移除死掉的流星
+            
+            // 简单的连线效果
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+                
+                for (let j = i; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 100) {
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${1 - distance/100})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
                 }
             }
-
             requestAnimationFrame(animate);
         }
 
-        // 监听窗口大小变化
         window.addEventListener('resize', resize);
-
-        // 启动
         resize();
         animate();
 
