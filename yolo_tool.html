@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO 目标检测 - 赛博朋克版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            purple: '#b026ff',
+                            blue: '#00d4ff',
+                            pink: '#ff00a0',
+                            dark: '#0a0a12',
+                            darker: '#050508',
+                        },
+                    },
+                    animation: {
+                        'spin-slow': 'spin 3s linear infinite',
+                        'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
+                        'fade-in': 'fade-in 0.5s ease-out',
+                        'slide-up': 'slide-up 0.5s ease-out',
+                    },
+                    keyframes: {
+                        'pulse-glow': {
+                            '0%, 100%': { boxShadow: '0 0 10px #00d4ff, 0 0 20px #b026ff' },
+                            '50%': { boxShadow: '0 0 20px #00d4ff, 0 0 40px #b026ff' },
+                        },
+                        'fade-in': {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        'slide-up': {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                    },
+                },
+            },
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer components {
+            .cyber-card {
+                @apply bg-cyber-dark border border-cyber-blue/30 rounded-2xl p-6 shadow-lg backdrop-blur-sm relative overflow-hidden transition-all duration-300 hover:border-cyber-pink/50 hover:shadow-cyber-pink/20;
+            }
+            .cyber-card::before {
+                content: '';
+                @apply absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyber-purple via-cyber-blue to-cyber-pink opacity-50;
+            }
+            .cyber-button {
+                @apply relative px-6 py-3 font-bold text-white rounded-lg overflow-hidden transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-cyber-blue focus:ring-offset-2 focus:ring-offset-cyber-dark;
+                background: linear-gradient(45deg, #b026ff, #00d4ff);
+            }
+            .cyber-button::before {
+                content: '';
+                @apply absolute inset-0 bg-gradient-to-r from-cyber-pink to-cyber-purple opacity-0 transition-opacity duration-300;
+            }
+            .cyber-button:hover::before {
+                @apply opacity-100;
+            }
+            .cyber-button span {
+                @apply relative z-10 flex items-center justify-center gap-2;
+            }
+            .cyber-button.stop {
+                background: linear-gradient(45deg, #ff00a0, #ff4d4d);
+            }
+            .cyber-button.stop::before {
+                background: linear-gradient(45deg, #ff4d4d, #ff00a0);
+            }
+            .cyber-input-group {
+                @apply mb-6 p-4 rounded-xl bg-cyber-darker/50 border border-white/5 transition-all duration-300 hover:border-cyber-blue/30;
+            }
+            .cyber-file-input {
+                @apply block w-full text-sm text-gray-400
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-cyber-blue/10 file:text-cyber-blue
+                hover:file:bg-cyber-blue/20
+                cursor-pointer;
+            }
+        }
+        body {
+            background-color: #050508;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(176, 38, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(0, 212, 255, 0.1) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+        .bg-grid {
+            background-size: 50px 50px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+        }
+    </style>
+</head>
+<body class="text-gray-200 font-sans">
+    <div class="fixed inset-0 bg-grid pointer-events-none"></div>
+    
+    <div class="container mx-auto px-4 py-12 relative z-10">
+        <header class="text-center mb-12 animate-fade-in">
+            <h1 class="text-5xl md:text-7xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-cyber-purple via-cyber-blue to-cyber-pink animate-pulse-glow">
+                📷 YOLO 目标检测
+            </h1>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-slide-up">
+            <!-- 左侧：输入区域 -->
+            <div class="cyber-card">
+                <h3 class="text-2xl font-bold mb-6 flex items-center text-cyber-blue">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    输入源
+                </h3>
+                
+                <div class="cyber-input-group">
+                    <p class="text-lg font-semibold mb-3 text-cyber-pink">图片检测</p>
+                    <input type="file" id="img-upload" accept="image/*" class="cyber-file-input">
+                </div>
+                
+                <div class="cyber-input-group group">
+                    <p class="text-lg font-semibold mb-3 text-cyber-purple">视频检测</p>
+                    <input type="file" id="video-upload" accept="video/*" class="cyber-file-input mb-3">
+                    <button id="start-video-detect" class="cyber-button stop w-full hidden group-hover:flex">
+                        <span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                            </svg>
+                            开始视频检测
+                        </span>
+                    </button>
+                </div>
+                
+                <div class="cyber-input-group">
+                    <p class="text-lg font-semibold mb-3 text-cyber-blue">摄像头检测</p>
+                    <div class="flex gap-4">
+                        <button onclick="startCamera()" class="cyber-button flex-1">
+                            <span>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l4 2A1 1 0 0020 14V6a1 1 0 00-1.447-.894l-4 2z" />
+                                </svg>
+                                开启摄像头
+                            </span>
+                        </button>
+                        <button onclick="stopCamera()" class="cyber-button stop flex-1">
+                            <span>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" />
+                                </svg>
+                                关闭
+                            </span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mt-6 p-4 bg-cyber-darker/50 rounded-xl border border-white/5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <span class="inline-flex items-center justify-center h-10 w-10 rounded-full bg-cyber-blue/20 text-cyber-blue">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </span>
+                        </div>
+                        <div class="ml-4">
+                            <h4 class="text-lg font-bold text-cyber-blue">系统状态</h4>
+                            <div class="status text-gray-400" id="status">就绪</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 rounded-xl overflow-hidden border-2 border-dashed border-cyber-blue/30 min-h-[200px] flex items-center justify-center bg-cyber-darker/30 relative">
+                    <video id="camera" autoplay playsinline class="w-full h-auto hidden rounded-xl"></video>
+                    <video id="uploaded-video" controls class="w-full h-auto hidden rounded-xl"></video>
+                    <img id="uploaded-img" class="w-full h-auto hidden rounded-xl">
+                    <div id="input-placeholder" class="text-center text-gray-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p>预览区域</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧：结果显示区域 -->
+            <div class="cyber-card">
+                <h3 class="text-2xl font-bold mb-6 flex items-center text-cyber-pink">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    检测结果
+                </h3>
+                <div id="result-container" class="rounded-xl overflow-hidden border-2 border-dashed border-cyber-pink/30 min-h-[400px] flex items-center justify-center bg-cyber-darker/30 relative transition-all duration-500">
+                    <img id="result-img" class="w-full h-auto hidden rounded-xl shadow-lg shadow-cyber-pink/20 transition-opacity duration-500">
+                    <video id="result-video" controls class="w-full h-auto hidden rounded-xl shadow-lg shadow-cyber-pink/20 transition-opacity duration-500"></video>
+                    <div id="result-placeholder" class="text-center text-gray-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 mx-auto mb-4 opacity-50 animate-spin-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                        </svg>
+                        <p class="text-xl">等待检测结果...</p>
+                    </div>
+                    <!-- 加载动画覆盖层 -->
+                    <div id="loading-overlay" class="absolute inset-0 bg-cyber-dark/80 backdrop-blur-sm flex flex-col items-center justify-center hidden transition-opacity duration-300 z-20">
+                        <div class="w-16 h-16 border-4 border-cyber-blue border-t-transparent rounded-full animate-spin mb-4"></div>
+                        <p class="text-cyber-blue font-bold animate-pulse">AI 正在分析中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cameraStream = null;
+        let detectionInterval = null;
+        let videoDetectionActive = false;
+        const apiUrl = "http://127.0.0.1:5000/detect"; 
+
+        const inputPlaceholder = document.getElementById('input-placeholder');
+        const resultPlaceholder = document.getElementById('result-placeholder');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        function showLoading() {
+            loadingOverlay.classList.remove('hidden');
+            resultPlaceholder.classList.add('hidden');
+        }
+
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+
+        function showInputMedia(type) {
+            inputPlaceholder.classList.add('hidden');
+            document.getElementById("uploaded-img").classList.add('hidden');
+            document.getElementById("uploaded-video").classList.add('hidden');
+            document.getElementById("camera").classList.add('hidden');
+            
+            if (type) {
+                document.getElementById(type).classList.remove('hidden');
+            } else {
+                inputPlaceholder.classList.remove('hidden');
+            }
+        }
+
+        function showResultMedia(type) {
+            resultPlaceholder.classList.add('hidden');
+            document.getElementById("result-img").classList.add('hidden');
+            document.getElementById("result-video").classList.add('hidden');
+            
+            if (type) {
+                document.getElementById(type).classList.remove('hidden');
+                // 添加淡入动画
+                setTimeout(() => {
+                    document.getElementById(type).classList.add('opacity-100');
+                }, 50);
+            } else {
+                resultPlaceholder.classList.remove('hidden');
+            }
+        }
+
+        // 初始化视频上传事件监听
+        document.getElementById("video-upload").addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            stopAllDetctions();
+            showInputMedia("uploaded-video");
+            
+            const video = document.getElementById("uploaded-video");
+            video.src = URL.createObjectURL(file);
+            
+            document.getElementById("start-video-detect").classList.remove('hidden');
+            updateStatus("请点击开始视频检测");
+        });
+
+        // 开始视频检测
+        document.getElementById("start-video-detect").addEventListener("click", async () => {
+            const btn = document.getElementById("start-video-detect");
+            if (videoDetectionActive) {
+                stopAllDetctions();
+                return;
+            }
+            
+            const video = document.getElementById("uploaded-video");
+            videoDetectionActive = true;
+            updateStatus("正在检测视频...");
+            btn.innerHTML = `<span><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd" /></svg>停止视频检测</span>`;
+            
+            video.play();
+            showLoading();
+            
+            detectionInterval = setInterval(async () => {
+                if (video.ended) {
+                    stopAllDetctions();
+                    updateStatus("视频检测完成");
+                    hideLoading();
+                    return;
+                }
+                
+                const canvas = document.createElement("canvas");
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext("2d").drawImage(video, 0, 0);
+                
+                const imgBase64 = canvas.toDataURL("image/jpeg").split(",")[1];
+                
+                try {
+                    const result = await fetch(apiUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ image: imgBase64 })
+                    }).then(res => res.json());
+                    
+                    if (result.status === "success") {
+                        const resultImg = document.getElementById("result-img");
+                        resultImg.src = `data:image/jpg;base64,${result.image}`;
+                        showResultMedia("result-img");
+                        hideLoading();
+                    }
+                } catch (error) {
+                    console.error("检测出错:", error);
+                    updateStatus("检测出错，请重试");
+                    hideLoading();
+                }
+            }, 300);
+        });
+
+        // 1. 上传图片检测
+        document.getElementById("img-upload").addEventListener("change", async (e) => {
+            stopAllDetctions();
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            showInputMedia("uploaded-img");
+            
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const imgBase64 = event.target.result.split(",")[1];
+                const imgElement = document.getElementById("uploaded-img");
+                imgElement.src = event.target.result;
+                updateStatus("正在检测图片...");
+                showLoading();
+                
+                try {
+                    const result = await fetch(apiUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ image: imgBase64 })
+                    }).then(res => res.json());
+                    
+                    if (result.status === "success") {
+                        const resultImg = document.getElementById("result-img");
+                        resultImg.src = `data:image/jpg;base64,${result.image}`;
+                        showResultMedia("result-img");
+                        updateStatus("图片检测完成");
+                    } else {
+                        alert("检测失败：" + result.msg);
+                        updateStatus("检测失败");
+                    }
+                } catch (error) {
+                    console.error("检测出错:", error);
+                    updateStatus("检测出错，请重试");
+                } finally {
+                    hideLoading();
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // 2. 开启摄像头实时检测
+        async function startCamera() {
+            stopAllDetctions();
+            showInputMedia("camera");
+            const video = document.getElementById("camera");
+            
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = cameraStream;
+                updateStatus("摄像头检测中...");
+                showLoading();
+                
+                detectionInterval = setInterval(async () => {
+                    const canvas = document.createElement("canvas");
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext("2d").drawImage(video, 0, 0);
+                    
+                    const imgBase64 = canvas.toDataURL("image/jpeg").split(",")[1];
+                    
+                    try {
+                        const result = await fetch(apiUrl, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ image: imgBase64 })
+                        }).then(res => res.json());
+                        
+                        if (result.status === "success") {
+                            const resultImg = document.getElementById("result-img");
+                            resultImg.src = `data:image/jpg;base64,${result.image}`;
+                            showResultMedia("result-img");
+                            hideLoading();
+                        }
+                    } catch (error) {
+                        console.error("检测出错:", error);
+                        hideLoading();
+                    }
+                }, 500);
+            } catch (error) {
+                console.error("无法访问摄像头:", error);
+                updateStatus("无法访问摄像头");
+                alert("无法访问摄像头: " + error.message);
+                showInputMedia();
+                hideLoading();
+            }
+        }
+
+        // 3. 关闭摄像头
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                showInputMedia();
+                updateStatus("摄像头已关闭");
+            }
+            if (detectionInterval) {
+                clearInterval(detectionInterval);
+                detectionInterval = null;
+            }
+            hideLoading();
+            showResultMedia(); // 清除结果显示
+        }
+
+        // 停止所有检测
+        function stopAllDetctions() {
+            stopCamera();
+            
+            if (videoDetectionActive) {
+                clearInterval(detectionInterval);
+                videoDetectionActive = false;
+                const btn = document.getElementById("start-video-detect");
+                btn.innerHTML = `<span><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>开始视频检测</span>`;
+                btn.classList.add('hidden'); // 停止后隐藏按钮，等待下次选择文件
+                document.getElementById("uploaded-video").pause();
+                showInputMedia(); // 清除输入显示
+                showResultMedia(); // 清除结果显示
+            }
+            hideLoading();
+        }
+
+        // 更新状态信息
+        function updateStatus(text) {
+            const statusEl = document.getElementById("status");
+            statusEl.textContent = text;
+            // 添加一个简单的闪烁动画来提示状态更新
+            statusEl.classList.remove('animate-pulse');
+            void statusEl.offsetWidth; // 触发重绘
+            statusEl.classList.add('animate-pulse');
+        }
+    </script>
+</body>
+</html>
