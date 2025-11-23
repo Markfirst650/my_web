@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的星空</title>
-    <link rel="icon" href="star.ico" type="image/x-icon">
-    <link rel="shortcut icon" href="star.ico" type="image/x-icon">
+    <link rel="icon" href="/star.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="/star.ico" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* --- 核心字体与重置 --- */
@@ -202,6 +202,15 @@
     </style>
 </head>
 <body>
+    <nav class="fixed top-0 left-0 w-full bg-black/80 backdrop-blur-md z-50 py-3 px-6 flex justify-between items-center">
+    <div class="text-white font-bold text-lg tracking-wider">MY STAR</div>
+    <ul class="flex space-x-6">
+        <li><a href="#hero" class="hover:text-[#ccff00] transition">序幕</a></li>
+        <li><a href="#about" class="hover:text-[#ccff00] transition">本质</a></li>
+        <li><a href="#work" class="hover:text-[#ccff00] transition">产出</a></li>
+        <li><a href="#contact" class="hover:text-[#ccff00] transition">链接</a></li>
+    </ul>
+</nav>
 
     <!-- 噪点遮罩 -->
     <div class="noise-bg"></div>
@@ -213,15 +222,7 @@
     <div class="cursor-dot" id="cursorDot"></div>
     <div class="cursor-outline" id="cursorOutline"></div>
 
-    <!-- 导航 (固定在左下角) -->
-    <nav class="fixed bottom-10 left-10 z-50 mix-blend-difference hidden md:block">
-        <ul class="space-y-2 text-sm font-bold tracking-widest">
-            <li><a href="#hero" class="hover-trigger hover:text-[#ccff00] transition">01. 序幕</a></li>
-            <li><a href="#about" class="hover-trigger hover:text-[#ccff00] transition">02. 本质</a></li>
-            <li><a href="#work" class="hover-trigger hover:text-[#ccff00] transition">03. 产出</a></li>
-            <li><a href="#contact" class="hover-trigger hover:text-[#ccff00] transition">04. 链接</a></li>
-        </ul>
-    </nav>
+    <!-- 导航 (固定在左下角) 已经删除了-->
 
     <!-- 01. HERO SECTION -->
     <section id="hero" class="section relative overflow-hidden">
@@ -362,10 +363,8 @@
             </a>
             
             <div class="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 border-t border-black pt-8 text-left font-bold font-mono">
-                <a href="#" class="hover:underline hover-trigger">GITHUB</a>
-                <a href="#" class="hover:underline hover-trigger">TWITTER / X</a>
-                <a href="#" class="hover:underline hover-trigger">INSTAGRAM</a>
-                <a href="#" class="hover:underline hover-trigger">LINKEDIN</a>
+                <a href="https://github.com/Markfirst650" class="hover:underline hover-trigger">GITHUB</a>
+                <a href="https://space.bilibili.com/534962810?spm_id_from=333.1007.0.0" class="hover:underline hover-trigger">BILIBILI</a>
             </div>
             
             <footer class="mt-20 text-xs font-mono opacity-60">
@@ -492,4 +491,5 @@
     </script>
 </body>
 </html>
+
 
