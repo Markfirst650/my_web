@@ -1,0 +1,62 @@
+/* 视频容器美化 */
+.video-container {
+    /* 与主内容保持一致的边距和位置 */
+    position: relative;
+    width: 90%;
+    max-width: 960px;
+    margin: 4rem auto 8rem; /* 增加垂直间距 */
+    /* 模拟科技感边框 */
+    border: 1px solid rgba(204, 255, 0, 0.4); /* 引用你的主题色 */
+    box-shadow: 0 0 10px rgba(204, 255, 0, 0.5), 0 0 20px rgba(0, 0, 0, 0.8) inset;
+    overflow: hidden;
+    border-radius: 4px;
+}
+
+.video-container video {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    /* 视频本身可以应用一个轻微的故障滤镜 */
+    filter: brightness(1.1) contrast(1.1); 
+}
+/* 图片轮播容器样式 */
+.carousel {
+    display: flex;
+    overflow-x: scroll; /* 允许水平滚动 */
+    justify-content: center;
+    gap: 3rem; /* 图片之间的间隔 */
+    padding: 2rem 0;
+    margin: 3rem auto;
+    width: 95%;
+    max-width: 1200px;
+    /* 隐藏滚动条 (可选，但很赛博) */
+    scrollbar-width: none; /* Firefox */
+}
+
+.carousel::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+}
+
+.carousel img {
+    /* 确保图片不会被挤压，保持原始尺寸 */
+    flex-shrink: 0;
+    width: 300px; /* 每张图片的固定宽度 */
+    height: 200px; /* 固定高度，可能会裁剪 */
+    object-fit: cover;
+    
+    /* 科技感边框和效果 */
+    border: 2px solid #ccff00;
+    box-shadow: 0 0 5px #ccff00;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+    filter: grayscale(80%) brightness(80%); /* 默认降低亮度，增加酷感 */
+}
+
+/* 悬停效果 */
+.carousel img:hover {
+    transform: translateY(-10px) scale(1.05); /* 向上抬起并放大 */
+    box-shadow: 0 10px 20px rgba(204, 255, 0, 0.8), 0 0 30px rgba(204, 255, 0, 1);
+    filter: grayscale(0%) brightness(100%); /* 恢复彩色和亮度 */
+    z-index: 10; /* 悬停时置顶 */
+}

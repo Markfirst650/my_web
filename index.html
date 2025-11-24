@@ -6,6 +6,7 @@
     <title>我的星空</title>
     <link rel="icon" href="/star.ico" type="image/x-icon">
     <link rel="shortcut icon" href="/star.ico" type="image/x-icon">
+    <link rel="stylesheet" href="/style.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* --- 核心字体与重置 --- */
@@ -328,7 +329,19 @@
                 </p>
             </div>
         </div>
+<div class="video-container">
+        <video autoplay loop muted >
+            <source src="videos/demo.mp4" type="video/mp4">
+        </video>
+    </div>
 
+    <div class="carousel">
+        <img src="images/p1.jpg">
+        <img src="images/p2.jpg">
+        <img src="images/p3.jpg">
+        <img src="images/p4.jpg">
+        <img src="images/p5.jpg">
+    </div>
         <div class="absolute bottom-10 right-10 animate-bounce">
             <span class="text-xs font-mono">SCROLL TO EXPLORE ↓</span>
         </div>
@@ -583,6 +596,7 @@
         animate();
 
     </script>
+    <!-- <script src="/main.js"></script> -->
 </body>
 
 </html>
