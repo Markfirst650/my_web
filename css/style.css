@@ -20,7 +20,7 @@
     /* 视频本身可以应用一个轻微的故障滤镜 */
     filter: brightness(1.1) contrast(1.1); 
 }
-/* 图片轮播容器样式 */
+/*图片轮播容器样式*/
 .carousel {
     display: flex;
     overflow-x: scroll; /* 允许水平滚动 */
@@ -51,6 +51,7 @@
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     cursor: pointer;
     filter: grayscale(80%) brightness(80%); /* 默认降低亮度，增加酷感 */
+    will-change: transform;/* 优化动画性能 */
 }
 
 /* 悬停效果 */
