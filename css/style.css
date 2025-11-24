@@ -1,0 +1,343 @@
+/* 视频容器美化 */
+.video-container {
+    /* 与主内容保持一致的边距和位置 */
+    position: relative;
+    width: 90%;
+    max-width: 960px;
+    margin: 4rem auto 8rem; /* 增加垂直间距 */
+    /* 模拟科技感边框 */
+    border: 1px solid rgba(204, 255, 0, 0.4); /* 引用你的主题色 */
+    box-shadow: 0 0 10px rgba(204, 255, 0, 0.5), 0 0 20px rgba(0, 0, 0, 0.8) inset;
+    overflow: hidden;
+    border-radius: 4px;
+}
+
+.video-container video {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    /* 视频本身可以应用一个轻微的故障滤镜 */
+    filter: brightness(1.1) contrast(1.1); 
+}
+/* 图片轮播容器样式 */
+.carousel {
+    display: flex;
+    overflow-x: scroll; /* 允许水平滚动 */
+    justify-content: center;
+    gap: 3rem; /* 图片之间的间隔 */
+    padding: 2rem 0;
+    margin: 3rem auto;
+    width: 95%;
+    max-width: 1200px;
+    /* 隐藏滚动条 (可选，但很赛博) */
+    scrollbar-width: none; /* Firefox */
+}
+
+.carousel::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+}
+
+.carousel img {
+    /* 确保图片不会被挤压，保持原始尺寸 */
+    flex-shrink: 0;
+    width: 300px; /* 每张图片的固定宽度 */
+    height: 200px; /* 固定高度，可能会裁剪 */
+    object-fit: cover;
+    
+    /* 科技感边框和效果 */
+    border: 2px solid #ccff00;
+    box-shadow: 0 0 5px #ccff00;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+    filter: grayscale(80%) brightness(80%); /* 默认降低亮度，增加酷感 */
+}
+
+/* 悬停效果 */
+.carousel img:hover {
+    transform: translateY(-10px) scale(1.05); /* 向上抬起并放大 */
+    box-shadow: 0 10px 20px rgba(204, 255, 0, 0.8), 0 0 30px rgba(204, 255, 0, 1);
+    filter: grayscale(0%) brightness(100%); /* 恢复彩色和亮度 */
+    z-index: 10; /* 悬停时置顶 */
+}
+.music-widget {
+    position: fixed;
+    bottom: 40px;
+    right: 40px;
+
+    width: 70px;
+    height: 70px;
+    background: #a9e407;
+    border-radius: 50%;
+
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 32px;
+    cursor: pointer;
+
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s ease;
+}
+
+/* 播放时旋转动画 */
+.playing {
+    animation: rotate 3s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+
+     
+/* --- 核心字体与重置 --- */
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;700&family=Noto+Sans+SC:wght@400;900&display=swap');
+
+        :root {
+            --bg-color: #0a0a0a;
+            --text-color: #f0f0f0;
+            --accent-color: #ccff00; /* 酸性绿 */
+            --secondary-color: #ff003c; /* 故障红 */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Space Grotesk', 'Noto Sans SC', sans-serif;
+            overflow-x: hidden;
+            cursor: none; /* 隐藏默认鼠标 */
+        }
+
+        /* --- 自定义光标系统 --- */
+        .cursor-dot,
+        .cursor-outline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            z-index: 9999;
+            pointer-events: none;
+            mix-blend-mode: difference;
+        }
+
+        .cursor-dot {
+            width: 8px;
+            height: 8px;
+            background-color: white;
+        }
+
+        .cursor-outline {
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: width 0.2s, height 0.2s, background-color 0.2s;
+        }
+
+        body.hovering .cursor-outline {
+            width: 80px;
+            height: 80px;
+            background-color: rgba(204, 255, 0, 0.2);
+            border-color: var(--accent-color);
+            backdrop-filter: blur(2px);
+        }
+
+        /* --- 导航栏高级样式 --- */
+        #mainNav {
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            border-bottom: 1px solid transparent;
+        }
+
+        #mainNav.scrolled {
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 0.75rem; /* py-3 equivalent */
+            padding-bottom: 0.75rem;
+        }
+
+        .nav-link {
+            position: relative;
+            font-family: 'Space Grotesk', monospace;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            overflow: hidden;
+            transition: color 0.3s;
+            display: inline-block;
+        }
+
+        /* 导航滑块效果 */
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--accent-color);
+            transform: scaleX(0);
+            transform-origin: right;
+            transition: transform 0.3s cubic-bezier(0.7, 0, 0.3, 1);
+            z-index: -1;
+        }
+
+        .nav-link:hover {
+            color: #000; /* 悬停时文字变黑 */
+        }
+
+        .nav-link:hover::before {
+            transform: scaleX(1);
+            transform-origin: left;
+        }
+
+        /* 光标闪烁动画 */
+        .blink-cursor {
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        /* --- 噪点背景 --- */
+        .noise-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+            opacity: 0.05;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* --- 故障文字特效 --- */
+        .glitch-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .glitch {
+            position: relative;
+            color: var(--text-color);
+            font-weight: 900;
+            letter-spacing: -2px;
+            text-transform: uppercase;
+        }
+
+        .glitch::before,
+        .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glitch::before {
+            left: 2px;
+            text-shadow: -1px 0 var(--secondary-color);
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim 5s infinite linear alternate-reverse;
+        }
+
+        .glitch::after {
+            left: -2px;
+            text-shadow: -1px 0 var(--accent-color);
+            clip: rect(44px, 450px, 56px, 0);
+            animation: glitch-anim2 5s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim {
+            0% { clip: rect(14px, 9999px, 127px, 0); }
+            5% { clip: rect(81px, 9999px, 81px, 0); }
+            10% { clip: rect(104px, 9999px, 86px, 0); }
+            15% { clip: rect(8px, 9999px, 12px, 0); }
+            20% { clip: rect(135px, 9999px, 5px, 0); }
+            25% { clip: rect(63px, 9999px, 5px, 0); }
+            100% { clip: rect(27px, 9999px, 56px, 0); }
+        }
+
+        @keyframes glitch-anim2 {
+            0% { clip: rect(61px, 9999px, 52px, 0); }
+            5% { clip: rect(113px, 9999px, 102px, 0); }
+            10% { clip: rect(21px, 9999px, 73px, 0); }
+            15% { clip: rect(138px, 9999px, 53px, 0); }
+            20% { clip: rect(23px, 9999px, 34px, 0); }
+            25% { clip: rect(100px, 9999px, 7px, 0); }
+            100% { clip: rect(78px, 9999px, 11px, 0); }
+        }
+
+        /* --- 滚动进度条 --- */
+        .scroll-progress {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 10px;
+            height: 0%;
+            background-color: var(--accent-color);
+            z-index: 100;
+        }
+
+        /* --- 布局样式 --- */
+        .section {
+            min-height: 100vh;
+            position: relative;
+            padding: 4rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .big-border-text {
+            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3);
+            color: transparent;
+            transition: all 0.3s;
+        }
+        
+        .hover-reveal:hover .big-border-text {
+            color: var(--accent-color);
+            -webkit-text-stroke: 0;
+        }
+
+        /* 卡片粗野主义边框 */
+        .brutal-card {
+            border: 1px solid white;
+            transition: all 0.3s;
+            position: relative;
+            background: rgba(255,255,255,0.02);
+        }
+        .brutal-card:hover {
+            background: var(--accent-color);
+            color: black;
+            transform: translate(-10px, -10px);
+            box-shadow: 10px 10px 0px white;
+        }
+
+        /* 跑马灯 */
+        .marquee-container {
+            overflow: hidden;
+            white-space: nowrap;
+            position: absolute;
+            opacity: 0.1;
+            font-size: 10rem;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .marquee-content {
+            display: inline-block;
+            animation: marquee 20s linear infinite;
+        }
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
