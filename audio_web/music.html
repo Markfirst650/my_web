@@ -3,567 +3,858 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Star Music</title>
-    <!-- 网页标题左侧的图标 -->
-<link rel="icon" href="music.ico" type="image/x-icon">
-<!-- 收藏夹中的图标 -->
-<link rel="shortcut icon" href="music.ico" type="image/x-icon">
-    
+    <title>Star Music | 沉浸式听觉</title>
+    <link rel="icon" href="music.ico" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- 引入 Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        'primary-dark': '#121212',
-                        'secondary-dark': '#181818',
-                        'card-dark': '#282828',
-                        'accent': '#1DB954', // 经典 Spotify 绿色
-                    },
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
+                        sans: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        'accent': '#ccff00',
+                    },
+                    animation: {
+                        'spin-slow': 'spin 12s linear infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
                     }
                 }
             }
         }
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        /* 自定义滚动条美化 */
-        ::-webkit-scrollbar {
-            width: 8px;
+        /* --- 动态背景 --- */
+        #bg-layer {
+            transition: background-image 1s ease-in-out;
         }
-        ::-webkit-scrollbar-thumb {
-            background-color: #555;
-            border-radius: 4px;
+
+        /* 隐藏滚动条 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 滑块样式优化 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            background: transparent;
         }
-        ::-webkit-scrollbar-track {
-            background-color: #121212;
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            margin-top: -4px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.5); }
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
         }
         
-        /* 隐藏原生音频播放器 */
-        #audio-element {
-            display: none;
-        }
-
-        /* ---------------------------------------------------- */
-        /* --- 新增：自定义进度条和音量滑块样式（增强视觉效果） --- */
-        /* ---------------------------------------------------- */
-
-        /* 进度条/音量条的轨道背景 */
-        #progress-slider, #volume-slider {
-            background: #282828;
-            height: 4px;
-        }
-
-        /* 进度条/音量条的滑块 (Thumb) 基础样式 */
-        #progress-slider::-webkit-slider-thumb,
-        #progress-slider::-moz-range-thumb,
-        #volume-slider::-webkit-slider-thumb,
-        #volume-slider::-moz-range-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        /* 进度条滑块：默认隐藏，悬停时或拖动时显示 */
-        #progress-slider::-webkit-slider-thumb {
-            width: 0px; 
-            height: 0px; 
-            background: #FFFFFF;
-        }
-        #progress-slider:hover::-webkit-slider-thumb,
-        #progress-slider:active::-webkit-slider-thumb {
-            width: 12px; 
-            height: 12px; 
-        }
-
-        /* 音量条滑块：始终可见，绿色 */
-        #volume-slider::-webkit-slider-thumb {
-            width: 10px;
-            height: 10px;
-            background: #1DB954; /* 绿色滑块 */
-        }
-
-        /* 进度条的填充背景色（由 JS 动态更新，实现绿色填充） */
-        #progress-slider {
-            background: linear-gradient(to right, #1DB954 0%, #1DB954 0%, #282828 0%, #282828 100%);
-        }
-
-        /* ---------------------------------------------------- */
-        /* --- 新增：动画和状态样式 --- */
-        /* ---------------------------------------------------- */
-
-        /* 1. 播放中的封面脉冲动画 */
-        @keyframes pulse-shadow {
-            0% { box-shadow: 0 0 0 0 rgba(29, 185, 84, 0.4); transform: scale(1); }
-            70% { box-shadow: 0 0 0 8px rgba(29, 185, 84, 0); transform: scale(1.03); }
-            100% { box-shadow: 0 0 0 0 rgba(29, 185, 84, 0); transform: scale(1); }
-        }
-        .playing-pulse {
-            animation: pulse-shadow 1.5s infinite cubic-bezier(0.66, 0, 0, 1);
-        }
-
-        /* 2. 音波动画 */
-        @keyframes wave {
-            0%, 100% { transform: scaleY(0.5); }
-            50% { transform: scaleY(1); }
-        }
-        .audio-wave span {
-            display: inline-block;
-            width: 3px;
-            height: 12px;
-            margin: 0 1px;
-            background: #1DB954;
-            transform-origin: bottom;
-        }
-        /* 调整每个波浪的动画延迟，使其看起来像跳动 */
-        .audio-wave span:nth-child(1) { animation: wave 1s infinite alternate; }
-        .audio-wave span:nth-child(2) { animation: wave 1s infinite alternate 0.2s; }
-        .audio-wave span:nth-child(3) { animation: wave 1s infinite alternate 0.4s; }
-
-        /* 3. 按钮点击反馈 */
-        .player-btn-animate:active {
+        /* --- 歌词动效核心 --- */
+        .lyric-line {
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transform-origin: center center;
+            opacity: 0.3;
+            filter: blur(2px);
             transform: scale(0.95);
-            opacity: 0.8;
+        }
+        .lyric-active {
+            opacity: 1;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #ccff00;
+            filter: blur(0);
+            text-shadow: 0 0 20px rgba(204, 255, 0, 0.5);
+            transform: scale(1.05);
+        }
+        
+        /* 歌词容器遮罩 */
+        .lyrics-mask {
+            mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+        }
+
+        .paused-animation { animation-play-state: paused !important; }
+
+        /* 侧滑抽屉动画 */
+        .drawer {
+            transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1); /* 丝滑曲线 */
+            transform: translateX(100%);
+        }
+        .drawer.drawer-open { transform: translateX(0); }
+
+        /* 玻璃拟态 - 仅用于抽屉 */
+        .glass-panel {
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* --- 新增：主界面挤压动画核心样式 --- */
+        #main-interface {
+            transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), filter 0.5s ease, border-radius 0.5s ease;
+            transform-origin: center left; /* 从左侧为基准缩放，避免跑偏 */
+            will-change: transform; /* 性能优化 */
+        }
+
+        /* 挤压状态类 */
+        .interface-squeezed {
+            transform: scale(0.9) translateX(-5%); /* 手机端稍微缩一点 */
+            filter: brightness(0.6) blur(1px); /* 稍微变暗并虚化，让注意力集中在列表 */
+            border-radius: 20px; /* 变成卡片圆角 */
+            overflow: hidden;
+        }
+
+        /* 桌面端挤压效果增强 */
+        @media (min-width: 1024px) {
+            .interface-squeezed {
+                transform: scale(0.85) translateX(-15%); /* 桌面端缩得更多，向左移得更多 */
+            }
         }
     </style>
 </head>
-<body class="bg-primary-dark min-h-screen pt-16 pb-24 lg:pb-20 text-white font-sans">
+<body class="bg-gray-900 text-white h-screen w-screen overflow-hidden font-sans relative">
 
-    <header class="fixed top-0 left-0 right-0 z-40 bg-secondary-dark/95 backdrop-blur-sm shadow-lg border-b border-card-dark p-4 flex justify-between items-center h-16">
-        <div class="flex items-center space-x-2">
-            <svg class="w-8 h-8 text-accent" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-2 16.5v-9l7 4.5-7 4.5z"/>
-            </svg>
-            <h1 class="text-2xl font-bold text-white">音乐中心</h1>
-        </div>
-        <nav class="hidden md:flex space-x-6 text-gray-300">
-            <a href="#" class="hover:text-accent transition duration-200 font-semibold text-white">首页</a>
-            <a href="#" class="hover:text-accent transition duration-200">我的歌单</a>
-            <a href="#" class="hover:text-accent transition duration-200">发现</a>
-        </nav>
-        <button class="md:hidden text-white focus:outline-none player-btn-animate">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
-        </button>
-    </header>
+    <!-- 1. 动态全屏背景层 (固定不动) -->
+    <div id="bg-layer" class="absolute inset-0 z-0 bg-cover bg-center transform scale-110 blur-[60px] opacity-60 brightness-75"></div>
+    <div class="absolute inset-0 z-0 bg-black/40"></div>
 
-    <main class="container mx-auto px-4 mt-8">
-        <h2 class="text-3xl font-semibold mb-6 text-white border-b border-card-dark pb-2">精选推荐歌单</h2>
+    <!-- 2. 主界面布局 (包裹在一个 ID 中以便整体控制) -->
+    <main id="main-interface" class="relative z-10 w-full h-full p-4 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-24 transition-all duration-500">
         
-        <div id="song-list" class="space-y-2">
+        <!-- 左侧：播放器核心控制区 -->
+        <div class="w-full lg:w-5/12 flex flex-col items-center gap-8 animate-float z-20">
+            <!-- 唱片/封面区域 -->
+            <div class="relative group">
+                <div class="absolute -inset-4 bg-accent/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition duration-700"></div>
+                <div id="album-art-container" class="w-64 h-64 lg:w-96 lg:h-96 rounded-full border-4 border-white/10 shadow-2xl overflow-hidden relative paused-animation animate-spin-slow">
+                    <img id="current-cover" src="" alt="Album Art" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 m-auto w-12 h-12 bg-gray-900 rounded-full border border-white/20 flex items-center justify-center">
+                        <div class="w-2 h-2 bg-black rounded-full"></div>
+                    </div>
+                </div>
             </div>
 
-        <div class="h-64 mt-10 bg-card-dark rounded-xl p-6 text-gray-400 flex items-center justify-center">
-            <p>更多内容和广告位...</p>
+            <!-- 歌曲信息 -->
+            <div class="text-center space-y-2">
+                <h1 id="current-title" class="text-4xl lg:text-5xl font-bold tracking-tight text-white drop-shadow-lg">Loading...</h1>
+                <p id="current-artist" class="text-xl text-gray-300 font-light tracking-widest uppercase">Artist</p>
+            </div>
+
+            <!-- 进度条 -->
+            <div class="w-full max-w-md space-y-2">
+                <div class="flex justify-between text-xs text-gray-300 font-mono opacity-80">
+                    <span id="current-time">0:00</span>
+                    <span id="duration-time">0:00</span>
+                </div>
+                <div class="relative h-4 group cursor-pointer">
+                    <div class="absolute top-1.5 left-0 w-full h-1 bg-white/20 rounded-full overflow-hidden">
+                        <div id="progress-fill" class="h-full bg-accent w-0 transition-all duration-100 shadow-[0_0_10px_#ccff00]"></div>
+                    </div>
+                    <input type="range" id="progress-slider" min="0" max="100" value="0" step="0.1" class="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer z-20">
+                </div>
+            </div>
+
+            <!-- 控制按钮组 -->
+            <div class="flex items-center gap-6 lg:gap-10">
+                <button id="mode-btn" class="text-gray-400 hover:text-white transition transform hover:scale-110" title="切换模式">
+                    <i id="mode-icon" class="ph ph-repeat text-2xl"></i>
+                </button>
+                
+                <button id="prev-btn" class="text-white hover:text-accent transition transform hover:scale-110 active:scale-95">
+                    <i class="ph-fill ph-skip-back text-4xl"></i>
+                </button>
+                <button id="play-pause-btn" class="w-20 h-20 bg-white text-black rounded-full flex items-center justify-center hover:scale-110 hover:bg-accent transition-all duration-300 shadow-xl shadow-white/10 active:scale-95">
+                    <i id="play-icon" class="ph-fill ph-play text-4xl ml-1"></i>
+                    <i id="pause-icon" class="ph-fill ph-pause text-4xl hidden"></i>
+                </button>
+                <button id="next-btn" class="text-white hover:text-accent transition transform hover:scale-110 active:scale-95">
+                    <i class="ph-fill ph-skip-forward text-4xl"></i>
+                </button>
+                
+                <!-- 歌单按钮 -->
+                <button id="playlist-toggle-btn" class="text-gray-400 hover:text-white transition transform hover:scale-110" title="打开歌单">
+                    <i class="ph ph-list-bullets text-2xl"></i>
+                </button>
+            </div>
         </div>
+
+        <!-- 右侧：极简歌词区 -->
+        <div class="w-full lg:w-7/12 h-[40vh] lg:h-[70vh] flex flex-col relative z-10">
+            <!-- 歌词容器 -->
+            <div id="lyrics-container" class="flex-1 overflow-y-auto no-scrollbar text-center py-20 lyrics-mask space-y-8">
+                <p class="text-gray-400 italic opacity-50">等待音乐信号连接...</p>
+            </div>
+        </div>
+
     </main>
 
-    <div id="toast-container" class="fixed top-20 right-4 z-50">
+    <!-- 侧滑歌单抽屉 (Drawer) -->
+    <div id="playlist-drawer" class="fixed top-0 right-0 h-full w-80 lg:w-96 glass-panel shadow-2xl z-50 drawer flex flex-col">
+        <!-- 抽屉头部 -->
+        <div class="p-6 border-b border-white/10 flex justify-between items-center">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <i class="ph-fill ph-playlist"></i> 播放列表
+            </h2>
+            <button id="close-drawer-btn" class="text-gray-400 hover:text-white transition">
+                <i class="ph ph-x text-2xl pointer-events-none"></i>
+            </button>
         </div>
 
-    <footer class="fixed bottom-0 left-0 right-0 z-50 bg-secondary-dark border-t border-card-dark p-3 lg:p-4 flex flex-col lg:flex-row items-center justify-between h-24 lg:h-20 shadow-2xl">
-        
-        <div id="track-info" class="flex items-center w-full lg:w-1/3 mb-2 lg:mb-0">
-            <img id="current-cover" src="https://placehold.co/60x60/1DB954/ffffff?text=M" alt="专辑封面" class="w-12 h-12 lg:w-14 lg:h-14 rounded-md shadow-lg mr-3 transition-all duration-300">
-            <div class="flex flex-col truncate">
-                <span id="current-title" class="text-sm font-semibold truncate">请选择歌曲</span>
-                <span id="current-artist" class="text-xs text-gray-400 truncate">--</span>
-            </div>
+        <!-- 歌单列表 -->
+        <div id="playlist-container" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-2">
+            <!-- JS 填充 -->
         </div>
 
-        <div class="flex flex-col items-center w-full lg:w-1/3">
-            <div class="flex items-center space-x-4 mb-1">
-                <button id="prev-btn" class="text-gray-300 hover:text-white transition duration-200 focus:outline-none player-btn-animate" title="上一首">
-                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M7 6v12l10-6zM17 6h-2v12h2z"/></svg>
-                </button>
-                <button id="play-pause-btn" class="w-10 h-10 bg-white text-primary-dark rounded-full flex items-center justify-center shadow-xl hover:scale-105 transition duration-200 focus:outline-none">
-                    <svg id="play-icon" class="w-5 h-5 ml-0.5 player-btn-animate" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    <svg id="pause-icon" class="w-5 h-5 hidden player-btn-animate" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                </button>
-                <button id="next-btn" class="text-gray-300 hover:text-white transition duration-200 focus:outline-none player-btn-animate" title="下一首">
-                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M17 6v12l-10-6zM7 6h2v12H7z"/></svg>
-                </button>
-            </div>
-            
-            <div class="flex items-center w-full max-w-lg space-x-2">
-                <span id="current-time" class="text-xs text-gray-400 w-8 text-right">0:00</span>
-                <input type="range" id="progress-slider" min="0" max="100" value="0" step="0.1" class="w-full rounded-lg appearance-none cursor-pointer">
-                <span id="duration-time" class="text-xs text-gray-400 w-8 text-left">0:00</span>
-            </div>
+        <!-- 底部功能区：上传LRC -->
+        <div class="p-6 border-t border-white/10 bg-black/20">
+             <button id="upload-lrc-btn" class="w-full py-3 rounded-xl border border-white/20 hover:bg-white/10 hover:border-accent text-sm font-mono text-gray-300 hover:text-accent transition flex items-center justify-center gap-2">
+                <i class="ph ph-upload-simple"></i>
+                上传当前歌曲 LRC
+            </button>
+            <input type="file" id="lrc-file-input" accept=".lrc" class="hidden">
         </div>
-        
-        <div class="hidden lg:flex items-center justify-end w-1/3 space-x-2">
-            <svg id="volume-icon" class="w-5 h-5 text-gray-400 transition-colors duration-200" fill="currentColor" viewBox="0 0 24 24"><path d="M3 10v4h3l5 5V5L6 10H3z"/></svg>
-            <input type="range" id="volume-slider" min="0" max="1" value="0.75" step="0.01" class="w-24 rounded-lg appearance-none cursor-pointer">
-            <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M14 3.23v17.54c2.51-.71 4.31-3.08 4.31-5.77s-1.8-5.06-4.31-5.77z"/></svg>
-        </div>
-    </footer>
+    </div>
 
+    <!-- 遮罩层 (点击关闭抽屉) -->
+    <div id="drawer-overlay" class="fixed inset-0 bg-transparent z-40 hidden"></div>
+
+    <!-- 隐藏的音频元素 -->
     <audio id="audio-element"></audio>
 
     <script>
-        // 确保滑块样式应用
-        const style = document.querySelector('style');
-
-
-        // --- 模拟歌曲数据 (!!! 请替换 src 链接 !!!) ---
+        // --- 数据与状态 ---
         const playlist = [
-            // 默认情况下，浏览器不允许直接访问本地文件，所以这些链接仅供示例。
-            // 替换为可公开访问的 .mp3 或使用本地文件服务器（如 Live Server）
-            { id: 1, title: "交换余生", artist: "林俊杰", duration: "3:45", src: "/music/交换余生.mp3", cover: "https://placehold.co/100x100/5B21B6/ffffff?text=JJ" },
-            { id: 2, title: "如果当时", artist: "许嵩", duration: "4:12", src: "/music/如果当时.mp3", cover: "https://placehold.co/100x100/1D4ED8/ffffff?text=VX" },
-            { id: 3, title: "遗失的心跳", artist: "萧亚轩", duration: "5:01", src: "/music/遗失的心跳.mp3", cover: "https://placehold.co/100x100/DC2626/ffffff?text=EY" },
-            { id: 4, title: "一点点", artist: "董唧唧&芊芊龍", duration: "3:20", src: "/music/一点点.mp3", cover: "https://placehold.co/100x100/34D399/ffffff?text=DJ" },
-            { id: 5, title: "恋人", artist: "李荣浩", duration: "2:55", src: "/music/恋人.mp3", cover: "https://placehold.co/100x100/F97316/ffffff?text=RH" },
-            { id: 6, title: "可能", artist: "程响", duration: "4:40", src: "/music/可能.mp3", cover: "https://placehold.co/100x100/06B6D4/ffffff?text=CX" },
+            { id: 1, title: "交换余生", artist: "林俊杰", duration: "3:45", src: "/music/交换余生.mp3", cover: "https://placehold.co/400x400/5B21B6/ffffff?text=JJ" },
+            { id: 2, title: "如果当时", artist: "许嵩", duration: "4:12", src: "/music/如果当时.mp3", cover: "https://placehold.co/400x400/1D4ED8/ffffff?text=VX" },
+            { id: 3, title: "遗失的心跳", artist: "萧亚轩", duration: "5:01", src: "/music/遗失的心跳.mp3", cover: "https://placehold.co/400x400/DC2626/ffffff?text=EY" },
+            { id: 4, title: "一点点", artist: "董唧唧&芊芊龍", duration: "3:20", src: "/music/一点点.mp3", cover: "https://placehold.co/400x400/34D399/ffffff?text=DJ" },
+            { id: 5, title: "恋人", artist: "李荣浩", duration: "2:55", src: "/music/恋人.mp3", cover: "https://placehold.co/400x400/F97316/ffffff?text=RH" },
+            { id: 6, title: "可能", artist: "程响", duration: "4:40", src: "/music/可能.mp3", cover: "https://placehold.co/400x400/06B6D4/ffffff?text=CX" },
         ];
-        // ----------------------------------------------------
 
-        // --- 播放器状态和 DOM 元素 ---
-        let currentTrackIndex = -1;
+        // 完整歌词库
+        const lyricsDB = {
+            "1": `[00:00.00]交换余生 (No Turning Back) - 林俊杰 (JJ Lin)
+[00:01.32]词：易家扬
+[00:01.91]曲：林俊杰 JJ LIN
+[00:02.79]编曲 & 键盘 MUSIC ARRANGEMENT & KEYBOARDS：简道生Dawson Chien/蔡政勋 Andy Tsai
+[00:05.58]制作人 PRODUCER：林俊杰 JJ LIN
+[00:06.90]配唱制作 VOCAL PRODUCTION：林俊杰 JJ LIN
+[00:08.52]制作协力 PRODUCTION ASSISTANCE：黄冠龙 ALEX.D/周信廷 SHiN CHOU/蔡沛蓁
+[00:11.17]弦乐编写 STRINGS ARRANGEMENT：王韵筑 Liv Wang
+[00:12.78]弦乐 STRINGS：李琪弦乐团
+[00:13.96]吉他 GUITAR：黄冠龙 ALEX.D
+[00:14.99]低音吉他 BASS GUITAR：寗子达
+[00:16.31]鼓 DRUMS：Brendan Buckley
+[00:16.90]和声编写 BACKGROUND VOCAL ARRANGEMENT：林俊杰 JJ LIN
+[00:18.66]和声 BACKGROUND VOCALS：林俊杰 JJ LIN
+[00:19.99]录音室 RECORDING STUDIOS：JFJ SANCTUARY (Taipei)/THE JFJ LAB (Taipei)/Smile录音棚 (Beijing)/East West Studios (Los Angeles)
+[00:21.90]录音师 RECORDING ENGINEERS：林俊杰 JJ LIN/周信廷 SHiN CHOU/李杰汇/Wil Anspach
+[00:24.84]鼓组音频编辑 ADDITIONAL DRUMS ENGINEERING：Buckley Buckley
+[00:26.46]混音室 MIXING STUDIO：mixHaus (Encino, CA)
+[00:27.48]混音师 MIXING ENGINEER：Richard Furch
+[00:28.51]后期母带处理制作人 MASTERING PRODUCER：林俊杰 JJ LIN
+[00:30.87]后期母带处理录音室 MASTERING STUDIO：Bernie Grundman Mastering, LA
+[00:33.07]后期母带处理录音师 MASTERING ENGINEER：Mike Bozzi
+[00:34.99]孤单听雨的猫
+[00:37.35]往时间裂缝里看到了我
+[00:42.71]雷电交加之外的另一些我
+[00:50.07]乌云静止以后 跳进平行时空
+[00:56.29]那些我 旅行中的你我
+[01:00.25]回忆胡乱穿梭 坠落
+[01:09.40]交换余生 是我 非我 苦与乐
+[01:16.86]阴天之后总有续命的晴空
+[01:23.98]如果我们几经转折 结局一样不动
+[01:31.59]也才算无愧这分合
+[02:05.54]定位心海的锚
+[02:07.87]让时间停顿的像慢动作
+[02:13.19]你说命运很坏吧幸好有我
+[02:20.17]如果没有以后 如果平行失控
+[02:26.80]那些我 不同人生的我
+[02:30.61]会以什么方式 哭过
+[02:37.80]交换余生 是我 非我 苦与乐
+[02:45.50]阴天之后总有续命的晴空
+[02:52.75]如果我们几经转折 结局一样不动
+[03:00.38]也才算无愧这分合
+[03:07.77]云等风 人等梦 爱辗过时光等什么
+[03:15.44]记不住 认不出 泪眼中谁一样脸红
+[03:22.50]等你说 等我说 一等就是一个宇宙
+[03:29.39]日升换月落 真爱换寂寞
+[03:37.12]交换余生 也许 忘了 第几梦
+[03:44.20]那时我们身处第几号时空
+[03:51.96]因为我们手心紧握 记忆也能紧扣
+[03:59.65]可不怕前方的虫洞
+[04:07.31]爱是时间的古董`,
+            "2": `[00:00.0]如果当时 - 许嵩
+[00:03.38]词：许嵩
+[00:06.77]曲：许嵩
+[00:10.15]编曲：许嵩
+[00:13.54]为什么 你当时对我好
+[00:19.43]又为什么 现在变得冷淡了
+[00:26.03]我知道 爱要走难阻挠
+[00:32.69]反正不是我的 我也不该要
+[00:38.71]你和我 曾经有共同爱好
+[00:44.54]谁的耳边 总有绝句在萦绕
+[00:51.23]我们俩 用文言文对话真的很搞笑
+[00:58.13]还笑那曹操贪慕着小乔
+[01:04.73]天灰了 雨坠了
+[01:07.79]视线要模糊了
+[01:10.97]此时感觉到你的重要
+[01:17.26]爱走了 心走了
+[01:20.46]你说你要走了
+[01:25.24]我为你唱最后的古谣
+[01:31.479996]红雨瓢泼泛起了回忆怎么潜
+[01:37.81]你美目如当年 流转我心间
+[01:43.990005]渡口边最后一面洒下了句点
+[01:50.06]与你若只如初见
+[01:53.21]何须感伤离别
+[02:22.85]你和我 曾经有共同爱好
+[02:28.63]谁的耳边 总有绝句在萦绕
+[02:35.56]我们俩 用文言文对话真的很搞笑
+[02:42.32]还笑那曹操贪慕着小乔
+[02:48.94]天灰了 雨坠了
+[02:51.99]视线要模糊了
+[02:55.15]此时感觉到你的重要
+[03:01.55]爱走了 心走了
+[03:04.58]你说你要走了
+[03:07.81]我为你唱最后的古谣
+[03:14.02]红雨瓢泼泛起了回忆怎么潜
+[03:20.35]你美目如当年 流转我心间
+[03:26.77]渡口边最后一面洒下了句点
+[03:32.73]与你若只如初见
+[03:35.88]何须感伤离别
+[03:39.55]红雨瓢泼泛起了回忆怎么潜
+[03:45.75]你美目如当年 流转我心间
+[03:52.03]渡口边最后一面洒下了句点
+[03:57.97]与你若只如初见
+[04:01.17]何须感伤离别
+[04:29.96]红雨瓢泼泛起了回忆怎么潜
+[04:36.14]你美目如当年 流转我心间
+[04:42.52]渡口边最后一面洒下了句点
+[04:48.53]与你若只如初见
+[04:51.59]何须感伤离别`,
+            "3": `[00:00.00]遗失的心跳 - 萧亚轩 (Elva Hsiao)
+[00:04.88]词：萧亚轩
+[00:09.77]曲：Svante Halldin/Emil Tigerlantz/Per Eklund/Awa Manneh
+[00:14.65]编曲：陈星翰/林于贤
+[00:19.54]回忆上了发条
+[00:22.95]总准时报到
+[00:26.77]我让日夜颠倒
+[00:30.10]因为黑夜太难熬
+[00:34.72]总以为哭过就好
+[00:38.61]梦和现实对调
+[00:41.63]穿越了城市的喧闹
+[00:45.68]心跳却感应不到
+[00:49.04]夜太深 心跳呢
+[00:53.12]已经遗失了 不见了
+[00:57.01]爱上你 心跳呢
+[01:00.65]慢慢 停止了 不爱了
+[01:05.32]你紧紧拥抱我入睡
+[01:09.01]曾经是永恒的画面
+[01:11.85]心痛着 你的爱 残酷的纪念
+[01:27.82]散落一地拥抱
+[01:31.61]像是在宣告 不等答案揭晓
+[01:38.99]我选择潇洒走掉 把家重新打扫
+[01:47.09]用香水味盖掉
+[01:50.49]但寂寞像是一场海啸
+[01:54.26]心跳被吞噬掉
+[01:57.60]夜太深 心跳呢
+[02:01.70]已经 遗失了 不见了
+[02:05.38]爱上你 心跳呢
+[02:09.27]慢慢 停止了 不爱了
+[02:13.87]你紧紧拥抱我入睡
+[02:17.57]曾经是永恒的画面
+[02:20.43]心痛着 你的爱
+[02:24.47]残酷的纪念
+[02:29.12]你的爱已停止心跳
+[02:33.21]急救也无效
+[02:34.72]越爱越想逃跑
+[02:36.57]自由是你唯一想要
+[02:40.23]Say goodbye
+[02:43.56]夜太深 心跳呢
+[02:47.31]已经 遗失了 不见了
+[02:51.03]爱上你 心跳呢
+[02:54.97]慢慢 换谁了 心碎了
+[02:59.51]就算快乐再也找不到
+[03:03.28]就算永远变成了玩笑
+[03:06.11]我努力 找到我
+[03:10.24]遗失的心跳`,
+            "4": `[00:00.01]一点点 (为什么晚上总是有星星) - 董唧唧/芊芊龍
+[00:00.65]词：董唧唧
+[00:00.78]曲：董唧唧
+[00:00.92]制作人：Lido
+[00:00.95]编曲：Lido
+[00:00.98]混音：官硕
+[00:01.01]统筹：无线魔方
+[00:01.05]和声：董唧唧
+[00:01.08]发行：百纳娱乐
+[00:01.11]推广：麻雀音乐人
+[00:01.26]My girl
+[00:02.25]我请你再靠近我一点点
+[00:04.92]我又不是坏人
+[00:06.26]你干嘛离我那么远
+[00:08.07]My boy
+[00:08.89]我请你再过来一点点
+[00:11.28]我能听清你的心跳让我记住你的脸
+[00:15.08]为什么晚上总是有星星
+[00:17.81]为什么你的眼里总是亮晶晶
+[00:21.74]为什么可乐总是要加冰
+[00:24.60]为什么连你的心跳我都想用心听
+[00:27.91]我还是那个bad boy
+[00:29.68]我总把帽子反带
+[00:31.28]你说我这样很帅
+[00:32.91]痞痞的样子很爱baby
+[00:35.45]他们都说让我对你停止依赖
+[00:38.02]可我早就亮出底牌
+[00:39.90]I am right to you
+[00:41.83]和你在一起
+[00:43.50]的时间
+[00:44.65]被映照的天空是粉色的
+[00:48.72]不再谈论
+[00:50.08]什么永远
+[00:51.41]那些无聊的话题是大人的
+[00:55.35]为什么晚上总是有星星
+[00:58.13]为什么你的眼里总是亮晶晶
+[01:02.00]为什么可乐总是要加冰
+[01:04.84]为什么连你的心跳我都想用心听
+[01:08.46]为什么晚上总是有星星
+[01:11.59]为什么你的眼睛总是亮晶晶
+[01:15.10]为什么可乐总是要加冰
+[01:18.18]为什么连你的心跳我总想用心听
+[01:35.02]不去讲没用的道理
+[01:37.04]掏空口袋只为你
+[01:38.76]原则是无法离开你
+[01:41.41]偏爱你我不再是秘密
+[01:43.75]甜蜜溢出了眼睛
+[01:45.48]控制血糖都成了问题
+[01:49.18]和你在一起
+[01:50.73]的时间
+[01:51.77]被映照的天空是粉色的
+[01:56.00]不再谈论
+[01:57.21]什么永远
+[01:58.63]那些无聊的话题是大人的
+[02:01.98]My girl
+[02:03.37]我请你再靠近我一点点
+[02:05.72]我又不是坏人
+[02:07.03]你干嘛离我那么远
+[02:08.94]My boy
+[02:09.87]我请你再过来一点点
+[02:12.19]我能听清你的心跳让我记住你的脸
+[02:15.91]为什么晚上总是有星星
+[02:18.63]为什么你的眼里总是亮晶晶
+[02:22.16]为什么可乐总是要加冰
+[02:25.36]为什么连你的心跳我都想用心听
+[02:29.18]为什么晚上总是有星星
+[02:32.05]为什么你的眼睛总是亮晶晶
+[02:35.63]为什么可乐总是要加冰
+[02:38.76]为什么连你的心跳我总想用心听`,
+            "5": `[00:00.99]恋人 - 李荣浩
+[00:03.63]词 Lyricist：刘嘉星 Jiaxing Liu
+[00:06.18]曲 Composer：刘嘉星 Jiaxing Liu
+[00:07.90]编曲 Arrangement：李荣浩 Ronghao Li
+[00:09.75]制作人 Producer：李荣浩 Ronghao Li
+[00:11.77]吉他 Guitars：李荣浩 Ronghao Li
+[00:13.06]贝斯 BASS：李荣浩 Ronghao Li
+[00:13.33]弦乐 String：国际首席爱乐乐团 International Master Philharmonic Orchestra
+[00:15.29]和音 Backing Vocal：李荣浩 Ronghao Li
+[00:16.46]录音师 Recording Engineer：李荣浩 Ronghao Li
+[00:18.59]混音师 Mixing Engineer：李荣浩 Ronghao Li
+[00:19.63]音乐制作助理 Production Assistant：青格乐 Chingel
+[00:20.03]录音工作室 Recording Studio：北京一样音乐录音室 Beijing Young Music Studio
+[00:21.88]混音工作室 Mixing Studio：北京一样音乐录音室 Beijing Young Music Studio
+[00:23.01]母带后期制作人Mastering Producer：李荣浩 Ronghao Li
+[00:23.47]母带后期处理工程师 Mastering Engineer：周天澈 TC Z.
+[00:24.00]母带后期处理录音室 Mastering Studio：Studio 21A
+[00:25.48]爱像是一场小雨
+[00:31.32]淅沥沥淅沥沥
+[00:33.23]滴入我回忆
+[00:39.21]爱又像一场旅行
+[00:44.91]走停停走停停
+[00:46.87]忽然遇见你
+[00:50.33]停下了足迹
+[00:54.54]是否还是不太喜欢吃香菜
+[00:58.27]到现在都没改
+[01:01.40]那双原来最喜欢的匡威鞋带
+[01:05.15]现在却解不开
+[01:07.32]那张磁带一再一再
+[01:10.98]它又再一次的卡带
+[01:14.31]却还会再一遍一遍
+[01:17.83]一遍又一遍听下来
+[01:21.11]昨天的爱 已回不来
+[01:27.99]却依然在心里徘徊
+[01:31.35]却依然在心底徘徊
+[02:01.41]爱又像一场旅行
+[02:07.29]走停停走停停
+[02:09.18]忽然遇见你
+[02:12.59]停下了足迹
+[02:16.70]是否还是不太喜欢吃香菜
+[02:20.61]到现在都没改
+[02:23.59]那双原来最喜欢的匡威鞋带
+[02:27.45]现在却解不开
+[02:29.84]那张磁带一再一再
+[02:33.23]它又再一次的卡带
+[02:36.58]却还会再一遍一遍
+[02:40.07]一遍又一遍听下来
+[02:43.42]昨天的爱 已回不来
+[02:50.29]却依然在心里徘徊
+[02:53.69]却依然在心底徘徊
+[02:59.64]凶手和恋人都喜欢事后回现场
+[03:06.59]看一看自己从前到底有多疯狂
+[03:13.29]回忆里充满着罗曼蒂克的幻想
+[03:19.01]那张磁带里藏着过往
+[03:22.45]播放了就会回到现场
+[03:26.38]再一再它又再一次的卡带
+[03:31.38]却还会再一遍一遍
+[03:34.95]一遍又一遍听下来
+[03:38.31]昨天的爱 已回不来
+[03:45.13]却依然在心里徘徊
+[03:48.48]却依然在心底徘徊`,
+            "6": `[00:00.05]可能 - 程响
+[00:00.89]词Lyricist：宁缺
+[00:01.65]曲Composer：宁缺
+[00:02.41]编曲Arranger：曲比阿且
+[00:03.60]录音Recording：张雨农
+[00:04.73]混音Mixing：王朋
+[00:05.62]母带Master tape：全相彦
+[00:06.76]视觉设计Visual Design：华玮轩
+[00:08.21]宣传发行Publicity and distribution：冷小婧/杜梦婷
+[00:10.12]企划Planning：刘芳/袋熊/李思睿/威尔
+[00:11.95]音乐统筹Music co ordination：陈亚飞
+[00:13.48]营销Marketing：壳壳菠萝
+[00:14.63]项目总监Project Director：庄有豪
+[00:16.05]出品人Publisher：潘鸿业
+[00:17.21]OP：北京金翼龙国际文化传媒有限公司
+[00:19.63]「未经著作权人书面许可 不得以任何方式（包括翻唱、翻录等）使用」
+[00:26.86]可能南方的阳光 照着北方的风
+[00:31.74]可能时光被吹走 从此无影无踪
+[00:36.69]可能故事只剩下 一个难忘的人
+[00:41.56]可能在昨夜梦里 依然笑得纯真
+[00:48.81]可能北京的后海 许多漂泊的魂
+[00:53.84]可能成都小酒馆 有群孤独的人
+[00:58.70]可能枕边有微笑 才能暖你清晨
+[01:03.60]可能夜空有流星 才能照你前行
+[01:10.99]可能西安城墙上 有人誓言不分
+[01:15.85]可能要去到大理 才算爱得认真
+[01:20.73]可能谁说要陪你 牵手走完一生
+[01:25.66]可能笑着流出泪 某天在某时辰
+[01:33.66]
+[01:55.06]可能桂林有渔船 为你迷茫点灯
+[01:59.91]可能在呼伦草原 牛羊流成风景
+[02:04.81]可能再也找不到 愿意相信的人
+[02:09.62]可能穿越了彷徨 脚步才能坚定
+[02:17.12]可能武当山道上 有人虔诚攀登
+[02:22.00]可能周庄小巷里 忽然忘掉年轮
+[02:26.87]可能要多年以后 才能看清曾经
+[02:31.77]可能在当时身边 有双温柔眼睛
+[02:39.07]可能西安城墙上 有人誓言不分
+[02:44.01]可能要去到大理 才算爱得认真
+[02:48.87]可能谁说要陪你 牵手走完一生
+[02:53.77]可能笑着流出泪
+[02:58.76]可能终于有一天 刚好遇见爱情
+[03:03.61]可能永远在路上 有人奋斗前行
+[03:08.49]可能一切的可能 相信才有可能
+[03:13.36]可能拥有过梦想 才能叫做青春`,
+            "default": `[00:00.00] 纯音乐 / 暂无歌词
+[00:05.00] Star Music 沉浸式听觉
+[00:10.00] 请上传 LRC 文件以显示歌词`
+        };
+
+        let currentTrackIndex = 0;
         let isPlaying = false;
+        let playMode = 0; 
+        let lyrics = [];
         
+        // DOM Elements
         const audio = document.getElementById('audio-element');
-        const playPauseBtn = document.getElementById('play-pause-btn');
-        const playIcon = document.getElementById('play-icon');
-        const pauseIcon = document.getElementById('pause-icon');
-        const prevBtn = document.getElementById('prev-btn');
-        const nextBtn = document.getElementById('next-btn');
+        const bgLayer = document.getElementById('bg-layer');
+        const albumArt = document.getElementById('album-art-container');
         const progressSlider = document.getElementById('progress-slider');
-        const volumeSlider = document.getElementById('volume-slider');
-        const currentTimeEl = document.getElementById('current-time');
-        const durationTimeEl = document.getElementById('duration-time');
-        const currentTitleEl = document.getElementById('current-title');
-        const currentArtistEl = document.getElementById('current-artist');
-        const currentCoverEl = document.getElementById('current-cover');
-        const songListEl = document.getElementById('song-list');
-        const toastContainer = document.getElementById('toast-container');
+        const progressFill = document.getElementById('progress-fill');
+        const lyricsContainer = document.getElementById('lyrics-container');
+        const playlistContainer = document.getElementById('playlist-container');
+        const playlistDrawer = document.getElementById('playlist-drawer');
+        const drawerOverlay = document.getElementById('drawer-overlay');
+        const closeDrawerBtn = document.getElementById('close-drawer-btn');
+        const toggleDrawerBtn = document.getElementById('playlist-toggle-btn');
+        const mainInterface = document.getElementById('main-interface'); // 获取主界面
+        
+        // Toast
+        const toastContainer = document.createElement('div');
+        toastContainer.className = 'fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none';
+        document.body.appendChild(toastContainer);
 
-
-        // --- 辅助函数 ---
-
-        /**
-         * 格式化时间 (秒 -> 分:秒)
-         */
-        function formatTime(seconds) {
-            if (isNaN(seconds) || seconds < 0) return "0:00";
-            const minutes = Math.floor(seconds / 60);
-            const remainingSeconds = Math.floor(seconds % 60);
-            return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+        // --- 功能函数 ---
+        function parseLyrics(lrcText) {
+            const lines = lrcText.split('\n');
+            const result = [];
+            const timeReg = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
+            lines.forEach(line => {
+                const match = timeReg.exec(line);
+                if (match) {
+                    const time = parseInt(match[1]) * 60 + parseInt(match[2]) + parseInt(match[3]) / 1000;
+                    const text = line.replace(timeReg, '').trim();
+                    if (text) result.push({ time, text });
+                }
+            });
+            return result;
         }
 
-        /**
-         * 更新进度条的背景颜色（实现已播放部分的绿色高亮）
-         */
-        function updateProgressBackground(percentage) {
-            // 找到 CSS 中的 #progress-slider 样式并替换其 background 属性
-            let cssText = style.innerHTML;
-            const newBackground = `linear-gradient(to right, #1DB954 ${percentage}%, #1DB954 ${percentage}%, #282828 ${percentage}%, #282828 100%)`;
-            
-            // 使用正则表达式精确替换
-            const regex = /#progress-slider \{[\s\S]*?background: linear-gradient\(to right, #1DB954.*?100%\);/g;
-
-            // 如果已经存在，则替换；否则，添加到最后
-            if (regex.test(cssText)) {
-                cssText = cssText.replace(regex, `#progress-slider { background: ${newBackground};`);
-            } else {
-                cssText += `\n#progress-slider { background: ${newBackground}; }`;
-            }
-
-            style.innerHTML = cssText;
-        }
-
-        /**
-         * 显示一个临时 Toast 消息
-         * @param {string} message 
-         * @param {number} duration 毫秒
-         */
-        function showMessage(message, duration = 3000) {
+        function showMessage(message, duration = 2000) {
             const toast = document.createElement('div');
-            toast.className = 'bg-accent text-white p-3 rounded-lg shadow-xl mb-2 transform transition-all duration-300 opacity-0 translate-x-10';
+            toast.className = 'bg-accent/90 text-gray-900 font-bold px-4 py-2 rounded-lg shadow-xl transform transition-all duration-300 opacity-0 translate-y-[-10px]';
             toast.textContent = message;
             toastContainer.appendChild(toast);
-
-            // 动画：淡入并移动
+            requestAnimationFrame(() => {
+                toast.classList.remove('opacity-0', 'translate-y-[-10px]');
+                toast.classList.add('opacity-100', 'translate-y-0');
+            });
             setTimeout(() => {
-                toast.classList.remove('opacity-0', 'translate-x-10');
-                toast.classList.add('opacity-100', 'translate-x-0');
-            }, 10);
-
-            // 动画：淡出并移除
-            setTimeout(() => {
-                toast.classList.remove('opacity-100', 'translate-x-0');
-                toast.classList.add('opacity-0', 'translate-x-10');
-                
-                // 彻底移除 DOM 元素
-                setTimeout(() => {
-                    toast.remove();
-                }, 300);
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-[-10px]');
+                setTimeout(() => toast.remove(), 300);
             }, duration);
         }
 
-        // --- 核心播放逻辑 ---
-
-        /**
-         * 渲染歌曲列表 UI
-         */
-        function renderSongList() {
-            songListEl.innerHTML = playlist.map((song, index) => {
-                const isCurrent = index === currentTrackIndex;
-                const isPlayingCurrent = isCurrent && isPlaying;
-
-                // 播放中的音波图标 (HTML)
-                const playingIcon = `
-                    <div class="audio-wave flex items-end h-5 mr-1 ${isPlayingCurrent ? '' : 'hidden'}">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                `;
-                // 播放按钮图标 (HTML)
-                const playButtonIcon = `
-                    <button class="ml-4 text-accent hover:scale-110 transition duration-150 play-list-btn player-btn-animate" data-index="${index}" title="播放">
-                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                    </button>
-                `;
-                
-                return `
-                    <div id="song-${index}" 
-                        class="song-item flex items-center p-4 rounded-xl transition-all duration-200 cursor-pointer 
-                                bg-card-dark hover:bg-card-dark/70 ${isCurrent ? 'border border-accent/80 shadow-lg scale-[1.01]' : ''}"
-                        data-index="${index}">
-                        <img src="${song.cover}" alt="${song.title} 封面" class="w-12 h-12 rounded-lg mr-4 shadow-md">
-                        <div class="flex-grow min-w-0">
-                            <p class="text-white font-medium truncate flex items-center">
-                                ${song.title} 
-                                ${isPlayingCurrent ? playingIcon : ''}
-                            </p>
-                            <p class="text-gray-400 text-sm truncate">${song.artist}</p>
-                        </div>
-                        <span class="text-gray-500 text-sm ml-4">${song.duration}</span>
-                        ${playButtonIcon}
-                    </div>
-                `;
-            }).join('');
-
-            // 重新绑定列表项的点击事件
-            document.querySelectorAll('.song-item').forEach(item => {
-                item.addEventListener('click', (e) => {
-                    if (!e.target.closest('.play-list-btn')) {
-                        const index = parseInt(item.dataset.index);
-                        if (index !== currentTrackIndex) {
-                            loadTrack(index);
-                            playTrack();
-                        } else {
-                            togglePlayPause();
-                        }
-                    }
-                });
-            });
-
-            // 绑定列表中的播放按钮事件
-            document.querySelectorAll('.play-list-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // 阻止事件冒泡到 song-item
-                    const index = parseInt(btn.dataset.index);
-                    loadTrack(index);
-                    playTrack();
-                });
-            });
-        }
-
-
-        /**
-         * 加载指定索引的歌曲
-         */
-        function loadTrack(index) {
-            if (index < 0 || index >= playlist.length) return;
-
-            const track = playlist[index];
-            const oldTrackIndex = currentTrackIndex;
-            currentTrackIndex = index;
-
-            audio.src = track.src;
-            audio.load();
-
-            // 更新底部播放器信息
-            currentTitleEl.textContent = track.title;
-            currentArtistEl.textContent = track.artist;
-            currentCoverEl.src = track.cover;
-            currentCoverEl.alt = `${track.title} 封面`;
-            
-            // 移除封面脉冲动画 (旧的或确保停止)
-            currentCoverEl.classList.remove('playing-pulse');
-            
-            // 更新进度条和时间显示
-            currentTimeEl.textContent = '0:00';
-            durationTimeEl.textContent = track.duration;
-            progressSlider.value = 0;
-            updateProgressBackground(0);
-
-            // 重新渲染列表以高亮当前歌曲，并更新音波图标
-            renderSongList();
-
-            if (oldTrackIndex !== -1 && oldTrackIndex !== index) {
-                showMessage(`正在播放: ${track.title} - ${track.artist}`, 2000);
-            }
-        }
-
-        /**
-         * 切换播放/暂停状态
-         */
-        function togglePlayPause() {
-            if (currentTrackIndex === -1) {
-                loadTrack(0);
-            }
-            
+        function updatePlayPauseUI() {
             if (isPlaying) {
-                pauseTrack();
+                document.getElementById('play-icon').classList.add('hidden');
+                document.getElementById('pause-icon').classList.remove('hidden');
+                albumArt.classList.remove('paused-animation');
             } else {
-                playTrack();
+                document.getElementById('play-icon').classList.remove('hidden');
+                document.getElementById('pause-icon').classList.add('hidden');
+                albumArt.classList.add('paused-animation');
             }
         }
 
-        /**
-         * 播放当前歌曲
-         */
         function playTrack() {
-            const playPromise = audio.play();
-
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    // 播放成功
-                    isPlaying = true;
-                    playIcon.classList.add('hidden');
-                    pauseIcon.classList.remove('hidden');
-                    playPauseBtn.title = "暂停";
-                    currentCoverEl.classList.add('playing-pulse'); // 封面动画
-                    renderSongList(); // 更新列表中的音波图标
-                }).catch(error => {
-                    // 自动播放被阻止
-                    console.error("播放失败:", error);
-                    pauseTrack(); // 确保 UI 是暂停状态
-                    showMessage('播放被阻止，请确保您的浏览器允许自动播放或手动点击！', 4000);
-                });
-            }
+            audio.play().then(() => {
+                isPlaying = true;
+                updatePlayPauseUI();
+            }).catch(e => {
+                console.error(e);
+                isPlaying = false;
+                updatePlayPauseUI();
+            });
         }
 
-        /**
-         * 暂停当前歌曲
-         */
-        function pauseTrack() {
-            audio.pause();
-            isPlaying = false;
-            playIcon.classList.remove('hidden');
-            pauseIcon.classList.add('hidden');
-            playPauseBtn.title = "播放";
-            currentCoverEl.classList.remove('playing-pulse'); // 停止封面动画
-            renderSongList(); // 更新列表中的音波图标
+        function loadTrack(index) {
+            currentTrackIndex = index;
+            const track = playlist[index];
+            
+            audio.src = track.src;
+            document.getElementById('current-title').innerText = track.title;
+            document.getElementById('current-artist').innerText = track.artist;
+            document.getElementById('current-cover').src = track.cover;
+            document.getElementById('duration-time').innerText = track.duration;
+
+            bgLayer.style.backgroundImage = `url(${track.cover})`;
+
+            // Load Lyrics
+            let lrcText = lyricsDB[track.id];
+            if (!lrcText) lrcText = lyricsDB["default"];
+            
+            lyrics = parseLyrics(lrcText);
+            renderLyricsUI();
+            
+            progressSlider.value = 0;
+            progressFill.style.width = '0%';
+            
+            renderPlaylistUI();
+        }
+
+        function renderLyricsUI() {
+            lyricsContainer.innerHTML = '';
+            lyricsContainer.innerHTML += '<div class="h-[50vh]"></div>';
+            lyrics.forEach((line, i) => {
+                const p = document.createElement('p');
+                p.className = 'lyric-line text-2xl lg:text-3xl font-medium cursor-pointer py-4';
+                p.innerText = line.text;
+                p.dataset.time = line.time;
+                p.onclick = () => {
+                    audio.currentTime = line.time;
+                    playTrack();
+                };
+                lyricsContainer.appendChild(p);
+            });
+            lyricsContainer.innerHTML += '<div class="h-[50vh]"></div>';
+        }
+
+        function renderPlaylistUI() {
+            playlistContainer.innerHTML = '';
+            playlist.forEach((track, i) => {
+                const div = document.createElement('div');
+                const isCurrent = i === currentTrackIndex;
+                div.className = `flex items-center p-3 rounded-xl cursor-pointer transition hover:bg-white/10 group ${isCurrent ? 'bg-white/10 border border-accent/50' : 'border border-transparent'}`;
+                div.onclick = () => {
+                    loadTrack(i);
+                    playTrack();
+                };
+                div.innerHTML = `
+                    <div class="relative w-10 h-10 mr-4">
+                        <img src="${track.cover}" class="w-full h-full rounded-md object-cover opacity-80 group-hover:opacity-100 transition">
+                        ${isCurrent && isPlaying ? '<div class="absolute inset-0 flex items-center justify-center bg-black/50 rounded-md"><i class="ph-fill ph-waveform text-accent animate-pulse"></i></div>' : ''}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium truncate ${isCurrent ? 'text-accent' : 'text-white'}">${track.title}</div>
+                        <div class="text-xs text-gray-400 truncate">${track.artist}</div>
+                    </div>
+                `;
+                playlistContainer.appendChild(div);
+            });
+        }
+
+        function getNextIndex() {
+            if (playMode === 2) {
+                let newIndex = currentTrackIndex;
+                while (newIndex === currentTrackIndex && playlist.length > 1) {
+                    newIndex = Math.floor(Math.random() * playlist.length);
+                }
+                return newIndex;
+            }
+            return (currentTrackIndex + 1) % playlist.length;
         }
         
-        /**
-         * 播放下一首
-         */
-        function nextTrack() {
-            if (currentTrackIndex === -1) return;
-            const nextIndex = (currentTrackIndex + 1) % playlist.length;
-            loadTrack(nextIndex);
-            playTrack();
+        function getPrevIndex() {
+             if (playMode === 2) return getNextIndex();
+             return (currentTrackIndex - 1 + playlist.length) % playlist.length;
         }
 
-        /**
-         * 播放上一首
-         */
-        function prevTrack() {
-            if (currentTrackIndex === -1) return;
-            // 如果歌曲已播放超过 3 秒，则从头开始播放，否则切换到上一首
-            if (audio.currentTime > 3) {
-                audio.currentTime = 0;
-                playTrack();
-                return;
+        // --- 事件监听 ---
+
+        // 抽屉 & 挤压动画逻辑
+        const toggleDrawer = () => {
+            const isOpen = playlistDrawer.classList.contains('drawer-open');
+            if (!isOpen) {
+                // 打开抽屉
+                playlistDrawer.classList.add('drawer-open');
+                drawerOverlay.classList.remove('hidden');
+                // 添加主界面挤压类
+                mainInterface.classList.add('interface-squeezed');
+            } else {
+                // 关闭抽屉
+                playlistDrawer.classList.remove('drawer-open');
+                drawerOverlay.classList.add('hidden');
+                // 移除主界面挤压类
+                mainInterface.classList.remove('interface-squeezed');
             }
-            let prevIndex = (currentTrackIndex - 1 + playlist.length) % playlist.length;
-            loadTrack(prevIndex);
-            playTrack();
-        }
+        };
 
+        toggleDrawerBtn.onclick = toggleDrawer;
+        closeDrawerBtn.onclick = toggleDrawer;
+        drawerOverlay.onclick = toggleDrawer;
 
-        // --- 事件监听器 ---
+        // 播放控制
+        document.getElementById('play-pause-btn').onclick = () => {
+            if (isPlaying) { audio.pause(); isPlaying = false; updatePlayPauseUI(); } 
+            else playTrack();
+        };
+        document.getElementById('next-btn').onclick = () => { loadTrack(getNextIndex()); playTrack(); };
+        document.getElementById('prev-btn').onclick = () => { loadTrack(getPrevIndex()); playTrack(); };
+        
+        document.getElementById('mode-btn').onclick = () => {
+            playMode = (playMode + 1) % 3;
+            const modes = ["列表循环", "单曲循环", "随机播放"];
+            const icons = ["ph-repeat", "ph-repeat-once", "ph-shuffle"];
+            document.getElementById('mode-icon').className = `ph ${icons[playMode]} text-2xl`;
+            showMessage(modes[playMode]);
+        };
 
-        document.addEventListener('DOMContentLoaded', () => {
-            // 1. 初始化歌曲列表
-            renderSongList();
+        // 自动播放下一首
+        audio.onended = () => {
+            if (playMode === 1) { audio.currentTime = 0; playTrack(); }
+            else { loadTrack(getNextIndex()); playTrack(); }
+        };
 
-            // 2. 绑定控制按钮事件
-            playPauseBtn.addEventListener('click', togglePlayPause);
-            nextBtn.addEventListener('click', nextTrack);
-            prevBtn.addEventListener('click', prevTrack);
-
-            // 3. 绑定音量控制
-            volumeSlider.addEventListener('input', (e) => {
-                const volume = parseFloat(e.target.value);
-                audio.volume = volume;
-
-                // 根据音量调整音量图标颜色
-                const volumeIcon = document.getElementById('volume-icon');
-                if (volume > 0.6) {
-                    volumeIcon.classList.add('text-accent');
-                    volumeIcon.classList.remove('text-gray-400');
-                } else if (volume > 0) {
-                    volumeIcon.classList.remove('text-accent');
-                    volumeIcon.classList.add('text-gray-400');
-                } else {
-                    volumeIcon.classList.remove('text-accent');
-                    volumeIcon.classList.add('text-gray-400');
-                }
-            });
-            audio.volume = volumeSlider.value; // 设置初始音量
-
-            // 4. 监听音频元素事件 (时间更新)
-            audio.addEventListener('loadedmetadata', () => {
-                const duration = audio.duration;
-                progressSlider.max = duration;
-                durationTimeEl.textContent = formatTime(duration);
-            });
-
-            audio.addEventListener('timeupdate', () => {
-                if (!progressSlider.isSeeking) { // 避免在用户拖动时更新滑块
-                    const currentTime = audio.currentTime;
-                    const duration = audio.duration;
-                    const percentage = (currentTime / duration) * 100;
-                    
-                    progressSlider.value = currentTime;
-                    currentTimeEl.textContent = formatTime(currentTime);
-                    updateProgressBackground(percentage);
-                }
-            });
-
-            // 5. 监听进度条交互
-            progressSlider.addEventListener('mousedown', () => progressSlider.isSeeking = true);
-            progressSlider.addEventListener('mouseup', () => progressSlider.isSeeking = false);
-            progressSlider.addEventListener('input', () => {
-                // 用户拖动时，实时更新进度时间
-                currentTimeEl.textContent = formatTime(progressSlider.value);
-                const percentage = (progressSlider.value / progressSlider.max) * 100;
-                updateProgressBackground(percentage);
-            });
-            progressSlider.addEventListener('change', (e) => {
-                // 用户释放滑块后，跳转到对应时间
-                audio.currentTime = e.target.value;
-                progressSlider.isSeeking = false;
-            });
+        // 进度与歌词滚动
+        audio.ontimeupdate = () => {
+            const ct = audio.currentTime;
+            const dur = audio.duration || 1;
             
-            // 6. 歌曲播放结束自动播放下一首
-            audio.addEventListener('ended', nextTrack);
+            // 进度条
+            if (!isDragging) {
+                const pct = (ct / dur) * 100;
+                progressSlider.value = pct;
+                progressFill.style.width = pct + '%';
+            }
+            
+            // 时间显示
+            const min = Math.floor(ct / 60);
+            const sec = Math.floor(ct % 60);
+            document.getElementById('current-time').innerText = `${min}:${sec<10?'0':''}${sec}`;
 
-            // 7. 初始加载第一首歌
-            loadTrack(0);
-            pauseTrack(); // 确保初始状态为暂停
-        });
+            // 歌词高亮逻辑
+            let activeIdx = -1;
+            for(let i=0; i<lyrics.length; i++) {
+                if (ct >= lyrics[i].time) activeIdx = i;
+                else break;
+            }
+
+            if (activeIdx !== -1) {
+                const lines = document.querySelectorAll('.lyric-line');
+                lines.forEach((line, idx) => {
+                    if (idx === activeIdx) {
+                        if (!line.classList.contains('lyric-active')) {
+                            line.classList.add('lyric-active');
+                            line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    } else {
+                        line.classList.remove('lyric-active');
+                    }
+                });
+            }
+        };
+
+        let isDragging = false;
+        progressSlider.onmousedown = () => isDragging = true;
+        progressSlider.onmouseup = () => isDragging = false;
+        progressSlider.oninput = (e) => {
+            const val = e.target.value;
+            progressFill.style.width = val + '%';
+            audio.currentTime = (val / 100) * audio.duration;
+        };
+
+        // LRC 上传
+        const lrcInput = document.getElementById('lrc-file-input');
+        document.getElementById('upload-lrc-btn').onclick = () => lrcInput.click();
+        lrcInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                lyrics = parseLyrics(ev.target.result);
+                renderLyricsUI();
+                showMessage('歌词加载成功');
+            };
+            reader.readAsText(file);
+            e.target.value = null;
+        };
+
+        // Init
+        loadTrack(0);
+        
     </script>
 </body>
 </html>
