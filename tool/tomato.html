@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>番茄钟 v4.0 </title>
+    <link rel="icon" href="./ico/clock.ico" type="image/x-icon">
+    <!-- 引入更圆润、清新的字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* === 全新配色方案：清新/莫兰迪 (默认浅色) === */
+            --bg-color: #f7f9fc;
+            --text-color: #4a5568;
+            --container-bg: rgba(255, 255, 255, 0.7);
+            --container-border: rgba(255, 255, 255, 0.5);
+            
+            /* 专注模式颜色 (蜜桃粉橙) */
+            --focus-primary: #ff9a8b;
+            --focus-secondary: #ff6a88;
+            --focus-accent: #ffcccc;
+            
+            /* 休息模式颜色 (海盐清蓝) */
+            --break-primary: #4facfe;
+            --break-secondary: #00f2fe;
+            --break-accent: #a0e7ff;
+            
+            /* 当前激活颜色 (默认专注) */
+            --active-primary: var(--focus-primary);
+            --active-secondary: var(--focus-secondary);
+            --active-accent: var(--focus-accent);
+
+            /* 按钮图标颜色 */
+            --toggle-icon-color: #f6ad55;
+        }
+
+        /* === 深色模式配色 (星夜/深空) === */
+        [data-theme="dark"] {
+            --bg-color: #1a202c; /* 深空蓝黑 */
+            --text-color: #e2e8f0; /* 灰白文字 */
+            --container-bg: rgba(30, 40, 55, 0.6); /* 深色磨砂 */
+            --container-border: rgba(255, 255, 255, 0.1);
+            
+            --focus-primary: #ff7e5f;
+            --focus-secondary: #feb47b;
+            
+            --break-primary: #00c6fb;
+            --break-secondary: #005bea;
+
+            --toggle-icon-color: #fbd38d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Quicksand', sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            transition: all 0.8s ease;
+        }
+
+        /* === 背景动态光斑 === */
+        body::before, body::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: -1;
+            opacity: 0.5;
+            transition: background 1s ease;
+            animation: floatBackground 20s ease-in-out infinite alternate;
+        }
+
+        body::before {
+            width: 60vh; height: 60vh;
+            background: var(--active-primary);
+            top: -15%; left: -15%;
+        }
+
+        body::after {
+            width: 50vh; height: 50vh;
+            background: var(--active-secondary);
+            bottom: -10%; right: -10%;
+            animation-delay: -10s;
+        }
+
+        @keyframes floatBackground {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(5%, 10%) scale(1.1); }
+            100% { transform: translate(-5%, -5%) scale(0.9); }
+        }
+
+        /* === 主题切换按钮 === */
+        .theme-toggle-btn {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--container-bg);
+            border: 2px solid var(--container-border);
+            cursor: pointer;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            color: var(--toggle-icon-color);
+            transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+            outline: none;
+        }
+
+        .theme-toggle-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+            pointer-events: none;
+        }
+
+        /* 状态1: 呼吸 (默认) */
+        @keyframes breatheIcon {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 1; }
+        }
+        .theme-toggle-btn.breathing {
+            animation: breatheIcon 3s ease-in-out infinite;
+        }
+
+        /* 状态2: 旋转 (鼠标靠近时) */
+        @keyframes rotateIcon {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .theme-toggle-btn.rotating {
+            animation: rotateIcon 1s linear infinite; 
+        }
+
+        /* 主容器 */
+        .container {
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            background: var(--container-bg);
+            padding: 80px;
+            border-radius: 40px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 2px solid var(--container-border);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.05), inset 0 0 20px rgba(255,255,255,0.1);
+            transition: all 0.5s ease;
+        }
+        
+        body:not(.break-mode) .container {
+            box-shadow: 0 30px 60px -12px rgba(255, 106, 136, 0.2);
+        }
+        body.break-mode .container {
+            box-shadow: 0 30px 60px -12px rgba(0, 242, 254, 0.2);
+        }
+        [data-theme="dark"] .container {
+             box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.4);
+        }
+
+        h1 {
+            font-weight: 700;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+            color: var(--text-color);
+            font-size: 1.8rem;
+        }
+        
+        .highlight-text {
+             background: linear-gradient(to right, var(--active-primary), var(--active-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            transition: all 1s ease;
+        }
+
+        /* === 模式切换按钮 === */
+        .modes {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 35px;
+            background: var(--container-bg);
+            border: 1px solid var(--container-border);
+            padding: 8px;
+            border-radius: 30px;
+            display: inline-flex;
+        }
+
+        .mode-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            opacity: 0.7;
+        }
+
+        .mode-btn.active {
+            background: var(--bg-color);
+            color: var(--active-secondary);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        .mode-btn:hover:not(.active) {
+            opacity: 1;
+            background: rgba(255,255,255,0.1);
+            transform: scale(1.02);
+        }
+
+        /* === 核心动画区域 === */
+        .timer-core {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            margin: 0 auto 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .progress-ring {
+            position: absolute;
+            top: -10px; left: -10px;
+            width: 300px; height: 300px;
+            transform: rotate(-90deg);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .progress-ring__circle {
+            transition: stroke-dashoffset 1s linear;
+            transform-origin: 50% 50%;
+            stroke: var(--active-primary);
+            stroke-linecap: round;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+            opacity: 0.9;
+        }
+        
+        .progress-ring__bg {
+             stroke: rgba(128,128,128,0.1);
+        }
+
+        /* 动画分层 */
+        .anim-layer-action {
+            position: absolute;
+            width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            z-index: 0;
+            /* [新增] 加上 transition，确保如果动画被新的类名覆盖或移除，能平滑过渡 */
+            transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .anim-layer-breathe {
+            position: absolute;
+            width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            /* 关键：暂停时平滑回归 */
+            transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform: scale(1);
+        }
+
+        /* 液态果冻球 */
+        .blob {
+            position: absolute;
+            width: 240px;
+            height: 240px;
+            background: linear-gradient(135deg, var(--active-primary), var(--active-secondary), var(--active-accent));
+            box-shadow: 
+                inset 0 0 50px rgba(255,255,255,0.3),
+                0 20px 40px -20px var(--active-primary);
+            border-radius: 50%;
+            animation: blob-float 10s ease-in-out infinite alternate, blob-morph 12s linear infinite;
+            transition: all 1s cubic-bezier(0.4, 0, 0.2, 1), background 1s ease, box-shadow 1s ease;
+            opacity: 0.9;
+            mix-blend-mode: multiply;
+        }
+        
+        [data-theme="dark"] .blob {
+            mix-blend-mode: screen;
+            opacity: 0.8;
+            box-shadow: 
+                inset 0 0 30px rgba(255,255,255,0.1),
+                0 0 40px var(--active-primary);
+        }
+
+        @keyframes blob-morph {
+            0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+            25% { border-radius: 45% 55% 35% 65% / 55% 35% 65% 45%; }
+            50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+            75% { border-radius: 55% 45% 65% 35% / 45% 65% 35% 55%; }
+        }
+        @keyframes blob-float {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-10px); }
+        }
+
+        /* 启动动画：液态深呼吸 */
+        @keyframes liquidStart {
+            0% { transform: scale(1); }
+            30% { transform: scale(0.92); } /* 吸气 */
+            60% { transform: scale(1.05); } /* 舒展 */
+            100% { transform: scale(1); }
+        }
+        .anim-layer-action.trigger-start {
+            animation: liquidStart 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* [新增] 重置动画：液态回弹 (Liquid Reset) */
+        /* 快速收缩后弹性归位，像一个“收”的动作 */
+        @keyframes liquidReset {
+            0% { transform: scale(1); opacity: 0.9; }
+            40% { transform: scale(0.85); opacity: 0.7; } /* 快速收缩 */
+            75% { transform: scale(1.03); opacity: 0.95; } /* 弹性溢出 */
+            100% { transform: scale(1); opacity: 0.9; }   /* 稳住 */
+        }
+        .anim-layer-action.trigger-reset {
+             animation: liquidReset 0.6s cubic-bezier(0.25, 1.2, 0.5, 1);
+        }
+
+
+        @keyframes deepBreathe {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); } 
+            100% { transform: scale(1); }
+        }
+
+        .anim-layer-breathe.running-state {
+            animation: deepBreathe 4s ease-in-out infinite;
+            animation-delay: 0.5s;
+        }
+
+        .time-display {
+            font-family: 'Quicksand', sans-serif;
+            font-size: 4.5rem;
+            font-weight: 700;
+            z-index: 3;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.15);
+            position: relative;
+            letter-spacing: -2px;
+            transition: transform 0.5s ease;
+        }
+        
+        [data-theme="dark"] .time-display {
+             text-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .time-display.running-text {
+            animation: textFloat 4s ease-in-out infinite alternate;
+            animation-delay: 0.5s;
+        }
+        @keyframes textFloat {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-5px); }
+        }
+        
+        /* === 控制按钮 === */
+        .controls {
+            display: flex;
+            gap: 25px;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        .control-btn {
+            padding: 14px 38px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: 700;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 10px 20px -10px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .control-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 100%; height: 100%;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            opacity: 0;
+            transition: transform 0.5s, opacity 0.3s;
+        }
+        .control-btn:active::after {
+            transform: translate(-50%, -50%) scale(2);
+            opacity: 1;
+            transition: 0s;
+        }
+
+        #startPauseBtn {
+            background: linear-gradient(135deg, var(--active-primary), var(--active-secondary));
+            color: white;
+        }
+
+        #startPauseBtn:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 15px 35px -10px var(--active-primary);
+        }
+        
+        #startPauseBtn:active {
+             transform: translateY(-1px) scale(0.98);
+        }
+
+        #resetBtn {
+            background: var(--container-bg);
+            color: var(--text-color);
+            border: 2px solid var(--container-border);
+        }
+
+        #resetBtn:hover {
+            background: rgba(255,255,255,0.5);
+            border-color: rgba(0,0,0,0.1);
+            transform: translateY(-2px) scale(1.03);
+        }
+        
+        /* === 设置面板 === */
+        .settings-toggle {
+            margin-top: 15px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            opacity: 0.6;
+            color: var(--text-color);
+            transition: opacity 0.3s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .settings-toggle:hover { opacity: 1; transform: translateY(-2px); }
+        
+        .settings-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), padding 0.5s ease, margin 0.5s ease;
+            text-align: left;
+            width: 90%;
+            margin: 0 auto;
+            opacity: 0;
+        }
+        
+        .settings-panel.open {
+            max-height: 250px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--container-border);
+            opacity: 1;
+        }
+        
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            color: var(--text-color);
+            align-items: center;
+        }
+        
+        .setting-item input {
+            width: 60px;
+            background: var(--bg-color);
+            border: 1px solid var(--container-border);
+            color: var(--text-color);
+            padding: 6px;
+            border-radius: 8px;
+            text-align: center;
+            font-family: 'Quicksand', sans-serif;
+            transition: border 0.3s ease;
+        }
+        .setting-item input:focus {
+            outline: none;
+            border-color: var(--active-primary);
+        }
+        
+        #saveSettingsBtn {
+            width: 100%; 
+            margin-top: 15px;
+            background: linear-gradient(to right, var(--active-primary), var(--active-secondary));
+            color: white;
+            padding: 10px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+        }
+        #saveSettingsBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px -5px var(--active-primary);
+        }
+        #saveSettingsBtn:active {
+            transform: scale(0.98);
+        }
+
+        @keyframes finishPulse {
+            0% { opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0; }
+        }
+        .finish-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 70%);
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .finish-overlay.active {
+            animation: finishPulse 2s ease-in-out;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="finish-overlay" id="finishOverlay"></div>
+
+    <button class="theme-toggle-btn breathing" id="themeToggle" aria-label="切换主题">
+        <svg id="themeIcon" viewBox="0 0 24 24">
+            <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z" />
+        </svg>
+    </button>
+
+    <div class="container">
+        <h1><span class="highlight-text" id="modeTitle">今日专注</span> 时光</h1>
+
+        <div class="modes">
+            <button class="mode-btn active" data-mode="focus" data-time="25">专注 25m</button>
+            <button class="mode-btn" data-mode="shortBreak" data-time="5">小憩 5m</button>
+            <button class="mode-btn" data-mode="longBreak" data-time="15">长休 15m</button>
+        </div>
+
+        <div class="timer-core">
+            <!-- 
+                动画分层：
+                1. actionLayer: 负责启动(Start)和重置(Reset)的一次性动作
+                2. breatheLayer: 负责计时时的“持续呼吸”
+            -->
+            <div class="anim-layer-action" id="actionLayer">
+                <div class="anim-layer-breathe" id="breatheLayer">
+                    <div class="blob" id="energyBlob"></div>
+                </div>
+            </div>
+            
+            <svg class="progress-ring" width="300" height="300" viewBox="0 0 300 300">
+                <circle class="progress-ring__bg" stroke-width="8" fill="transparent" r="140" cx="150" cy="150"/>
+                <circle class="progress-ring__circle" stroke-width="8" fill="transparent" r="140" cx="150" cy="150"/>
+            </svg>
+            
+            <div class="time-display" id="timeDisplay">25:00</div>
+        </div>
+
+        <div class="controls">
+            <button id="startPauseBtn" class="control-btn">开始专注</button>
+            <button id="resetBtn" class="control-btn">重置</button>
+        </div>
+        
+        <div class="settings-toggle" id="settingsToggle">自定义时长 ⚙️</div>
+        
+        <div class="settings-panel" id="settingsPanel">
+            <div class="setting-item">
+                <label>专注时长 (分钟)</label>
+                <input type="number" id="focusTimeInput" value="25" min="1" max="60">
+            </div>
+             <div class="setting-item">
+                <label>小憩时长 (分钟)</label>
+                <input type="number" id="shortBreakInput" value="5" min="1" max="30">
+            </div>
+             <div class="setting-item">
+                <label>长休时长 (分钟)</label>
+                <input type="number" id="longBreakInput" value="15" min="1" max="60">
+            </div>
+            <button id="saveSettingsBtn">保存设置</button>
+        </div>
+
+    </div>
+
+    <audio id="alarmSound" preload="auto">
+        <source src="data:audio/mpeg;base64,//NkxAAACCABAA//NkxAwAECABAA//NkxAgAECABAA//NkxAkAECABAA//NkxAsAECABAA//NkxAwAECABAA//NkxA4AECABAA//NkxBEAECABAA//NkxBMAECABAA//NkxBkAECABAA//NkxB4AECABAA//NkxCMAECABAA//NkxCgAECABAA//NkxC4AECABAA//NkxDQAECABAA//NkxDoAECABAA//NkxEAAECABAA//NkxEQAECABAA//NkxEoAECABAA//NkxFAAECABAA//NkxFYAGCABAA//NkxFsAECABAA//NkxGAAECABAA//NkxGQAECABAA//NkxGoAECABAA//NkxHAAECABAA//NkxHQAECABAA//NkxHkAECABAA//NkxIAAGCABAA//NkxIQAECABAA//NkxIoAECABAA//NkxJAAECABAA//NkxJQAECABAA//NkxJoAECABAA//NkxKAAECABAA//NkxKQAECABAA//NkxkoAECABAA//NkxKwAECABAA//NkxLEAECABAA//NkxLYAECABAA//NkxMAAECABAA//NkxMQAECABAA//NkxMoAECABAA//NkxNAAECABAA//NkxNQAECABAA//NkxNoAECABAA//NkxOAAECABAA//NkxOQAECABAA//NkxOoAECABAA//NkxPAAECABAA//NkxPQAECABAA//NkxPoAECABAA//NkxQAAECABAA//NkxQQAECABAA//NkxQoAECABAA//NkxRAAECABAA//NkxRQAECABAA//NkxRoAECABAA//NkxSAAECABAA//NkxSQAECABAA//NkxSoAECABAA//NkxTAAECABAA//NkxTQAECABAA//NkxToAECABAA//NkxUAAECABAA//NkxUQAECABAA//NkxUoAECABAA//NkxVAAECABAA//NkxVQAECABAA//NkxVoAECABAA//NkxWAAECABAA//NkxWQAECABAA//NkxWoAECABAA//NkxXAAECABAA//NkxXQAECABAA//NkxXQAECABAA//NkxXoAECABAA//NkxaAAECABAA//NkxaQAECABAA//NkxaoAECABAA//NkxbAAECABAA//NkxbQAECABAA//Nkxb4AMCABAA//NkxcoAMCABAA//NkxdsAKCABAA//NkxegAECABAA//NkxfQAECABAA//NkxfoAECABAA//NkxggAECABAA//NkxgwAECABAA//NkxhQAECABAA//NkxhwAECABAA//NkxiQAECABAA//NkxiwAECABAA//NkxjgAECABAA//NkxjwAECABAA//NkxkQAECABAA//NkxkwAECABAA//NkxlgAECABAA//NkxmgAECABAA//NkxngAECABAA//NkxnwAECABAA//NkxogAECABAA//NkxowAECABAA//NkxpgAECABAA//NkxpwAECABAA//NkxqQAECABAA//NkxqwAECABAA//NkxrgAECABAA//NkxrwAECABAA//NkxsQAECABAA//NkxswAECABAA//Nkx0gAECABAA//Nkx0wAECABAA//Nkx1QAECABAA//Nkx1wAECABAA//Nkx2QAECABAA//Nkx2wAECABAA//Nkx3gAECABAA//Nkx3wAECABAA//Nkx4QAECABAA//Nkx4wAECABAA//Nkx5gAECABAA//Nkx6AAECABAA//Nkx6QAECABAA//Nkx6wAECABAA//Nkx7gAECABAA//Nkx7wAECABAA//Nkx8QAECABAA//Nkx8wAECABAA//Nkx9gAECABAA//Nkx+AAECABAA//Nkx+QAECABAA//Nkx+wAECABAA//Nkx/gAECABAA//Nkx/wAECABAA==" type="audio/mpeg">
+    </audio>
+
+    <script>
+        const timeDisplay = document.getElementById('timeDisplay');
+        const startPauseBtn = document.getElementById('startPauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const modeBtns = document.querySelectorAll('.mode-btn[data-mode]');
+        const modeTitle = document.getElementById('modeTitle');
+        const energyBlob = document.getElementById('energyBlob');
+        const finishOverlay = document.getElementById('finishOverlay');
+        const alarmSound = document.getElementById('alarmSound');
+        
+        // 动画层
+        const actionLayer = document.getElementById('actionLayer');
+        const breatheLayer = document.getElementById('breatheLayer');
+        
+        const settingsToggle = document.getElementById('settingsToggle');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        const focusTimeInput = document.getElementById('focusTimeInput');
+        const shortBreakInput = document.getElementById('shortBreakInput');
+        const longBreakInput = document.getElementById('longBreakInput');
+
+        // 主题切换
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+
+        const circle = document.querySelector('.progress-ring__circle');
+        const radius = circle.getAttribute('r');
+        const circumference = radius * 2 * Math.PI;
+        circle.style.strokeDasharray = `${circumference} ${circumference}`;
+        circle.style.strokeDashoffset = circumference;
+
+        let timeLeft;
+        let totalTime;
+        let isRunning = false;
+        let timerId = null;
+        let currentMode = 'focus';
+        let isDark = false;
+
+        let modeTimes = {
+            focus: 25,
+            shortBreak: 5,
+            longBreak: 15
+        };
+        
+        const modeTitles = {
+            focus: '今日专注',
+            shortBreak: '片刻小憩',
+            longBreak: '深度放松'
+        };
+
+        const sunPath = "M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z";
+        const moonPath = "M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.7-10.5-10.5 0-4.368 2.667-8.112 6.46-9.694a.75.75 0 01.818.162z";
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playTone(freq, type, duration, vol) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        const sfx = {
+            start: () => {
+                playTone(440, 'sine', 0.3, 0.1); 
+                setTimeout(() => playTone(660, 'sine', 0.4, 0.1), 100); 
+            },
+            pause: () => {
+                playTone(400, 'sine', 0.3, 0.1); 
+                setTimeout(() => playTone(300, 'sine', 0.4, 0.1), 100);
+            },
+            click: () => {
+                playTone(800, 'sine', 0.1, 0.05);
+            }
+        };
+
+
+        function init() {
+            switchMode('focus');
+            
+            startPauseBtn.addEventListener('click', toggleTimer);
+            resetBtn.addEventListener('click', resetTimer);
+            modeBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    sfx.click();
+                    switchMode(e.target.dataset.mode);
+                });
+            });
+            
+            settingsToggle.addEventListener('click', () => {
+                sfx.click();
+                settingsPanel.classList.toggle('open');
+                settingsToggle.textContent = settingsPanel.classList.contains('open') ? '收起设置 ▴' : '自定义时长 ⚙️';
+            });
+            
+            saveSettingsBtn.addEventListener('click', () => {
+                sfx.click();
+                saveSettings();
+            });
+
+            themeToggle.addEventListener('click', () => {
+                sfx.click();
+                toggleTheme();
+            });
+            
+            document.addEventListener('mousemove', handleMouseMove);
+        }
+
+        function handleMouseMove(e) {
+            const rect = themeToggle.getBoundingClientRect();
+            const btnX = rect.left + rect.width / 2;
+            const btnY = rect.top + rect.height / 2;
+            const dist = Math.hypot(e.clientX - btnX, e.clientY - btnY);
+            const threshold = 300; 
+
+            if (dist < threshold) {
+                themeToggle.classList.remove('breathing');
+                themeToggle.classList.add('rotating');
+                const speed = 0.5 + (dist / threshold) * 2.0; 
+                themeToggle.style.animationDuration = `${speed}s`;
+            } else {
+                themeToggle.classList.remove('rotating');
+                themeToggle.classList.add('breathing');
+                themeToggle.style.animationDuration = ''; 
+            }
+        }
+
+        function toggleTheme() {
+            isDark = !isDark;
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            const pathElement = themeIcon.querySelector('path');
+            pathElement.setAttribute('d', isDark ? moonPath : sunPath);
+        }
+
+        function switchMode(mode) {
+            if (isRunning) toggleTimer();
+            currentMode = mode;
+            
+            modeBtns.forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+            modeTitle.textContent = modeTitles[mode];
+            
+            totalTime = modeTimes[mode] * 60;
+            timeLeft = totalTime;
+            updateDisplay();
+            setProgress(0);
+            
+            if (mode === 'focus') {
+                document.documentElement.style.setProperty('--active-primary', 'var(--focus-primary)');
+                document.documentElement.style.setProperty('--active-secondary', 'var(--focus-secondary)');
+                document.documentElement.style.setProperty('--active-accent', 'var(--focus-accent)');
+                document.body.classList.remove('break-mode');
+                startPauseBtn.textContent = '开始专注';
+            } else {
+                document.documentElement.style.setProperty('--active-primary', 'var(--break-primary)');
+                document.documentElement.style.setProperty('--active-secondary', 'var(--break-secondary)');
+                document.documentElement.style.setProperty('--active-accent', 'var(--break-accent)');
+                document.body.classList.add('break-mode');
+                startPauseBtn.textContent = mode === 'shortBreak' ? '开始小憩' : '开始休息';
+            }
+        }
+
+        function toggleTimer() {
+            if (isRunning) {
+                // === 暂停逻辑 ===
+                sfx.pause(); 
+                clearInterval(timerId);
+                startPauseBtn.textContent = '继续';
+                breatheLayer.classList.remove('running-state');
+                timeDisplay.classList.remove('running-text');
+            } else {
+                // === 开始逻辑 ===
+                sfx.start(); 
+                
+                actionLayer.classList.remove('trigger-start');
+                actionLayer.classList.remove('trigger-reset'); // 确保没有冲突
+                void actionLayer.offsetWidth; 
+                actionLayer.classList.add('trigger-start');
+                setTimeout(() => actionLayer.classList.remove('trigger-start'), 700);
+                
+                breatheLayer.classList.add('running-state');
+                timeDisplay.classList.add('running-text');
+                
+                timerId = setInterval(() => {
+                    timeLeft--;
+                    updateDisplay();
+                    const progress = 1 - (timeLeft / totalTime);
+                    setProgress(progress);
+
+                    if (timeLeft <= 0) {
+                        finishTimer();
+                    }
+                }, 1000);
+                startPauseBtn.textContent = '暂停';
+            }
+            isRunning = !isRunning;
+        }
+
+        function resetTimer() {
+            // 播放一个类似于暂停但更干脆的音效，或者沿用pause
+            sfx.pause(); 
+            
+            if (isRunning) {
+                // 如果正在运行，先停止计时器，移除呼吸类名
+                // 注意：toggleTimer里会移除running-state，这会触发breatheLayer的transition回缩
+                toggleTimer(); 
+            }
+            
+            timeLeft = totalTime;
+            updateDisplay();
+            setProgress(0);
+            switchMode(currentMode);
+            
+            breatheLayer.classList.remove('running-state');
+            timeDisplay.classList.remove('running-text');
+            
+            // [新增] 触发重置动画 (Liquid Reset)
+            // 先清理所有可能的动画类
+            actionLayer.classList.remove('trigger-start');
+            actionLayer.classList.remove('trigger-reset');
+            
+            // 强制重绘，确保动画能重新触发
+            void actionLayer.offsetWidth; 
+            
+            // 添加重置动画类
+            actionLayer.classList.add('trigger-reset');
+            
+            // 动画结束后清理类名
+            setTimeout(() => actionLayer.classList.remove('trigger-reset'), 600);
+        }
+
+        function finishTimer() {
+            clearInterval(timerId);
+            isRunning = false;
+            switchMode(currentMode);
+            timeLeft = 0;
+            updateDisplay();
+            setProgress(1);
+            
+            breatheLayer.classList.remove('running-state');
+            timeDisplay.classList.remove('running-text');
+            
+            try {
+                alarmSound.currentTime = 0;
+                alarmSound.play();
+            } catch(e) { console.log("Autoplay blocked"); }
+            
+            finishOverlay.classList.add('active');
+            setTimeout(() => {
+                finishOverlay.classList.remove('active');
+                resetTimer(); 
+            }, 2500);
+        }
+
+        function updateDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const displayString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            timeDisplay.textContent = displayString;
+            document.title = `${displayString} - 清新番茄钟`;
+        }
+        
+        function setProgress(percent) {
+            const offset = circumference - (percent * circumference);
+            circle.style.strokeDashoffset = offset;
+        }
+        
+        function saveSettings() {
+            const focusVal = parseInt(focusTimeInput.value);
+            const shortBreakVal = parseInt(shortBreakInput.value);
+            const longBreakVal = parseInt(longBreakInput.value);
+            
+            if (focusVal > 0 && shortBreakVal > 0 && longBreakVal > 0) {
+                modeTimes.focus = focusVal;
+                modeTimes.shortBreak = shortBreakVal;
+                modeTimes.longBreak = longBreakVal;
+                
+                document.querySelector('[data-mode="focus"]').textContent = `专注 ${focusVal}m`;
+                document.querySelector('[data-mode="shortBreak"]').textContent = `小憩 ${shortBreakVal}m`;
+                document.querySelector('[data-mode="longBreak"]').textContent = `长休 ${longBreakVal}m`;
+                
+                switchMode(currentMode);
+                settingsPanel.classList.remove('open');
+                settingsToggle.textContent = '自定义时长 ⚙️';
+            } else {
+                alert("请输入有效的时间（大于0分钟）");
+            }
+        }
+
+        init();
+
+    </script>
+</body>
+</html>
