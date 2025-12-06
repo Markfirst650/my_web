@@ -150,7 +150,7 @@
             opacity: 0;
             transition: all 0.4s var(--transition-smooth);
             box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            pointer-events: none; /* 防止未打开时阻挡 */
+            pointer-events: none;
         }
         .color-panel.open {
             transform: translateX(0) scale(1);
@@ -201,6 +201,8 @@
             border-radius: 50%;
         }
 
+        /* 移除唱片中间的黑点 */
+        /* .album-art::after { content: ''; ... } */
 
         .album-glow {
             position: absolute;
@@ -732,7 +734,7 @@
     <audio id="audio-core"></audio>
 
     <script>
-        // --- 核心数据 (保持原样 + 支持动态添加) ---
+        // --- 核心数据 (预置歌曲) ---
         let playlist = [
             { id: 1, title: "交换余生", artist: "林俊杰", duration: "3:45", src: "/music/交换余生.mp3", cover: "cover/ljj.webp" },
             { id: 2, title: "如果当时", artist: "许嵩", duration: "4:12", src: "/music/如果当时.mp3", cover: "cover/xs.webp" },
@@ -1409,6 +1411,86 @@
         const lyricsContainer = document.getElementById('lyrics-container');
         const drawerList = document.getElementById('drawer-list');
 
+        // --- 核心功能：IndexedDB 持久化存储 ---
+        let db;
+        const DB_NAME = 'StarMusicDB';
+        const STORE_NAME = 'tracks';
+
+        // 1. 初始化数据库
+        function initDB() {
+            const request = indexedDB.open(DB_NAME, 1);
+            
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                }
+            };
+
+            request.onsuccess = (e) => {
+                db = e.target.result;
+                loadTracksFromDB(); // 数据库就绪后加载本地音乐
+            };
+
+            request.onerror = (e) => {
+                console.error("DB Error", e.target.error);
+                showToast("本地存储功能初始化失败");
+            };
+        }
+
+        // 2. 从数据库加载音乐
+        function loadTracksFromDB() {
+            const transaction = db.transaction([STORE_NAME], 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                const tracks = request.result;
+                if (tracks && tracks.length > 0) {
+                    tracks.forEach(track => {
+                        // 重建 Blob URL
+                        if (track.audioBlob) track.src = URL.createObjectURL(track.audioBlob);
+                        if (track.coverBlob) track.cover = URL.createObjectURL(track.coverBlob);
+                        // 恢复歌词
+                        if (track.lrcText) lyricsDB[track.id] = track.lrcText;
+                        
+                        playlist.push(track);
+                    });
+                    renderDrawer(); // 刷新歌单
+                    showToast(`已加载 ${tracks.length} 首本地歌曲`);
+                }
+            };
+        }
+
+        // 3. 保存音乐到数据库
+        function saveTrackToDB(track, audioBlob, coverBlob, lrcText) {
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            
+            // 构造存储对象 (不存 blob URL，而是存原始 Blob)
+            const dbTrack = {
+                id: track.id,
+                title: track.title,
+                artist: track.artist,
+                duration: track.duration,
+                audioBlob: audioBlob,
+                coverBlob: coverBlob,
+                lrcText: lrcText,
+                timestamp: Date.now()
+            };
+
+            store.add(dbTrack);
+        }
+
+        // 4. 从数据库删除音乐
+        function deleteTrackFromDB(id) {
+            if(!db) return;
+            const transaction = db.transaction([STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            store.delete(id);
+        }
+
+
         // --- 逻辑函数 ---
 
         function showToast(msg) {
@@ -1435,38 +1517,32 @@
 
         // 加载歌曲
         function loadTrack(index) {
-            // 防止越界
             if (index < 0 || index >= playlist.length) index = 0;
             
             currentIndex = index;
             const track = playlist[index];
             
-            if (!track) return; // 额外保护
+            if (!track) return; 
 
             audio.src = track.src;
             document.getElementById('current-title').textContent = track.title;
             document.getElementById('current-artist').textContent = track.artist;
-            // 兼容上传的Blob URL和本地路径
             document.getElementById('current-cover').src = track.cover || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMzMzMiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIzMCIgZmlsbD0iIzIyMiIvPjwvc3ZnPg=='; 
             document.getElementById('duration-time').textContent = track.duration;
 
-            // 背景
             if(track.cover) {
                 bgLayer.style.backgroundImage = `url(${track.cover})`;
             } else {
                 bgLayer.style.background = `linear-gradient(45deg, #111, #333)`;
             }
             
-            // 歌词
             const lrcRaw = lyricsDB[track.id] || lyricsDB["default"];
             lyrics = parseLyrics(lrcRaw);
             renderLyrics();
             
-            // 重置
             progressFill.style.width = '0%';
             renderDrawer();
             
-            // 状态
             if(isPlaying) playAudio();
             else updatePlayState(false);
         }
@@ -1517,13 +1593,11 @@
                 const isActive = i === currentIndex;
                 div.className = `track-item ${isActive ? 'active' : ''}`;
                 
-                // 轨道点击
                 div.onclick = () => {
                     loadTrack(i);
                     playAudio();
                 };
                 
-                // 内部 HTML
                 let innerHTML = `
                     <img src="${track.cover || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCI+PHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjMzMzIi8+PC9zdmc+'}">
                     <div class="track-details">
@@ -1536,54 +1610,57 @@
                 
                 div.innerHTML = innerHTML;
 
-                // 创建删除按钮
-                const delBtn = document.createElement('button');
-                delBtn.className = 'btn-delete';
-                delBtn.title = "删除歌曲";
-                delBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
-                delBtn.onclick = (e) => {
-                    e.stopPropagation(); // 防止触发播放
-                    deleteTrack(i);
-                };
-                div.appendChild(delBtn);
+                // 只有 id 是长字符串（时间戳）的才是本地上传的，才允许删除
+                // 简单的判断：预设歌曲ID是数字，本地歌曲ID是时间戳字符串
+                if (typeof track.id === 'string' && track.id.length > 8) {
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'btn-delete';
+                    delBtn.title = "删除歌曲";
+                    delBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteTrack(i);
+                    };
+                    div.appendChild(delBtn);
+                }
 
                 drawerList.appendChild(div);
             });
         }
         
-        // 删除歌曲逻辑
         function deleteTrack(index) {
             if (playlist.length <= 1) {
                 showToast("至少保留一首歌曲");
                 return;
             }
             
-            // 如果删除的是当前播放的歌曲
+            const trackToDelete = playlist[index];
+
             if (index === currentIndex) {
-                // 如果后面还有歌，播放下一首（index不变，内容变了）
-                // 如果是最后一首，播放上一首（index-1）
                 if (index === playlist.length - 1) {
                     currentIndex--;
                 }
-                // 从数组移除
                 playlist.splice(index, 1);
-                // 重新加载新位置的歌曲
                 loadTrack(currentIndex);
                 if (isPlaying) playAudio();
             } else {
-                // 如果删除的是当前之前的歌，当前索引减1
                 if (index < currentIndex) {
                     currentIndex--;
                 }
                 playlist.splice(index, 1);
-                renderDrawer(); // 仅刷新列表，不重新加载歌曲
+                renderDrawer(); 
             }
+
+            // 从 IndexedDB 删除
+            if(typeof trackToDelete.id === 'string') {
+                deleteTrackFromDB(trackToDelete.id);
+            }
+
             showToast("已删除");
         }
 
         // --- 交互事件 ---
 
-        // 1. 歌单开关 (Toggle Fix + Overlay)
         const toggleDrawer = () => {
             const isOpen = drawer.classList.contains('open');
             if(isOpen) {
@@ -1600,42 +1677,33 @@
         document.getElementById('close-drawer').onclick = toggleDrawer;
         drawerOverlay.onclick = toggleDrawer;
 
-        // 2. 调色盘
         const paletteBtn = document.getElementById('palette-btn');
         const colorPanel = document.getElementById('color-panel');
         
-        // 切换调色盘
         paletteBtn.onclick = (e) => {
-            e.stopPropagation(); // 防止触发全局点击
+            e.stopPropagation();
             colorPanel.classList.toggle('open');
         };
 
-        // 点击空白处关闭调色盘
         document.addEventListener('click', (e) => {
             if (colorPanel.classList.contains('open')) {
-                // 如果点击目标不是 colorPanel 且不是 colorPanel 的子元素
                 if (!colorPanel.contains(e.target) && e.target !== paletteBtn) {
                     colorPanel.classList.remove('open');
                 }
             }
         });
         
-        // 阻止面板内部点击冒泡导致关闭
-        colorPanel.onclick = (e) => {
-            e.stopPropagation();
-        }
+        colorPanel.onclick = (e) => { e.stopPropagation(); }
 
-        // 实时换色
         document.getElementById('picker-primary').oninput = (e) => {
             const color = e.target.value;
             document.documentElement.style.setProperty('--primary', color);
-            document.documentElement.style.setProperty('--primary-glow', color + '80'); // 50% opacity
+            document.documentElement.style.setProperty('--primary-glow', color + '80');
         };
         document.getElementById('picker-text').oninput = (e) => {
             document.documentElement.style.setProperty('--text-main', e.target.value);
         };
 
-        // 3. 上传功能
         const uploadModal = document.getElementById('upload-modal');
         const openUploadBtn = document.getElementById('open-upload-modal');
         const cancelUploadBtn = document.getElementById('cancel-upload');
@@ -1644,7 +1712,6 @@
         openUploadBtn.onclick = () => uploadModal.classList.add('show');
         cancelUploadBtn.onclick = () => uploadModal.classList.remove('show');
 
-        // 处理文件选择获取时长 (可选优化)
         const upAudioInput = document.getElementById('up-audio');
         let tempDuration = "0:00";
         
@@ -1657,7 +1724,6 @@
                     const m = Math.floor(tempAudio.duration / 60);
                     const s = Math.floor(tempAudio.duration % 60);
                     tempDuration = `${m}:${s<10?'0':''}${s}`;
-                    // 自动填入文件名作为标题
                     if(!document.getElementById('up-title').value) {
                          document.getElementById('up-title').value = file.name.replace(/\.[^/.]+$/, "");
                     }
@@ -1677,78 +1743,75 @@
                 return;
             }
 
-            const newId = Date.now().toString(); // 唯一ID
+            const newId = Date.now().toString(); 
             const audioUrl = URL.createObjectURL(audioFile);
             
-            // 异步处理逻辑封装
             const processUpload = async () => {
                 let coverUrl = "";
+                let coverBlob = null;
+                let lrcText = "[00:00.00] 暂无歌词 / 纯音乐";
                 
-                // 处理封面
                 if (coverFile) {
+                    coverBlob = coverFile; // 保存 blob 供 DB 使用
                     coverUrl = await new Promise(resolve => {
                         const reader = new FileReader();
-                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onload = (e) => resolve(e.target.result); // Data URL 供当前显示
                         reader.readAsDataURL(coverFile);
                     });
                 }
 
-                // 处理歌词
                 if (lrcFile) {
-                    const lrcText = await new Promise(resolve => {
+                    lrcText = await new Promise(resolve => {
                         const reader = new FileReader();
                         reader.onload = (e) => resolve(e.target.result);
                         reader.readAsText(lrcFile);
                     });
-                    lyricsDB[newId] = lrcText;
-                } else {
-                    lyricsDB[newId] = "[00:00.00] 暂无歌词 / 纯音乐";
                 }
+                
+                lyricsDB[newId] = lrcText;
 
-                finalizeUpload(newId, title, artist, audioUrl, coverUrl);
+                // 准备 track 对象
+                const newTrack = {
+                    id: newId,
+                    title: title,
+                    artist: artist,
+                    duration: tempDuration,
+                    src: audioUrl,
+                    cover: coverUrl 
+                };
+
+                // 保存到内存播放列表
+                playlist.push(newTrack);
+                renderDrawer();
+                
+                // 保存到 IndexedDB
+                saveTrackToDB(newTrack, audioFile, coverBlob, lrcText);
+
+                uploadModal.classList.remove('show');
+                showToast(`已保存到本地: ${title}`);
+                
+                document.getElementById('up-audio').value = "";
+                document.getElementById('up-cover').value = "";
+                document.getElementById('up-lrc').value = "";
+                document.getElementById('up-title').value = "";
+                document.getElementById('up-artist').value = "";
+                
+                loadTrack(playlist.length - 1);
+                playAudio();
             };
 
             processUpload();
         };
 
-        function finalizeUpload(id, title, artist, src, cover) {
-            const newTrack = {
-                id: id,
-                title: title,
-                artist: artist,
-                duration: tempDuration,
-                src: src,
-                cover: cover // 如果为空则在渲染时使用默认图
-            };
-            
-            playlist.push(newTrack);
-            renderDrawer();
-            uploadModal.classList.remove('show');
-            showToast(`已添加: ${title}`);
-            
-            // 清空表单
-            document.getElementById('up-audio').value = "";
-            document.getElementById('up-cover').value = "";
-            document.getElementById('up-lrc').value = "";
-            document.getElementById('up-title').value = "";
-            document.getElementById('up-artist').value = "";
-            
-            // 自动播放新歌
-            loadTrack(playlist.length - 1);
-            playAudio();
-        }
-
-
-        // --- 播放器基础事件 ---
         playBtn.onclick = () => isPlaying ? audio.pause() : playAudio();
         
         audio.onpause = () => updatePlayState(false);
         audio.onplay = () => updatePlayState(true);
 
         const modePaths = [
-            "M17 2l5 4-5 4V7c-4.43 0-8 2.68-8 8h-2c0-5.52 4.47-10 10-10V2zM7 22l-5-4 5-4v3c4.43 0 8-2.68 8-8h2c0 5.52-4.47 10-10 10v3z", // Loop List
-            "M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4zm-4-2V9h-1l-2 1v1h1.5v4H13z", // Loop One
-            "M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" // Shuffle
+            "M17 2l5 4-5 4V7c-4.43 0-8 2.68-8 8h-2c0-5.52 4.47-10 10-10V2zM7 22l-5-4 5-4v3c4.43 0 8-2.68 8-8h2c0 5.52-4.47 10-10 10v3z",
+            "M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4zm-4-2V9h-1l-2 1v1h1.5v4H13z",
+            "M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"
         ];
 
         document.getElementById('next-btn').onclick = () => {
@@ -1791,7 +1854,6 @@
             const sec = Math.floor(ct % 60);
             document.getElementById('current-time').textContent = `${min}:${sec<10?'0':''}${sec}`;
 
-            // Lyrics Sync
             let activeIdx = -1;
             for(let i=0; i<lyrics.length; i++) {
                 if(ct >= lyrics[i].time) activeIdx = i;
@@ -1820,7 +1882,8 @@
             playAudio();
         };
 
-        // 初始化
+        // 启动时初始化 DB -> 加载本地歌曲 -> 加载第一首
+        initDB();
         loadTrack(0);
 
     </script>
