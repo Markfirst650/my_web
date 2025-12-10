@@ -1,197 +1,390 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的星空</title>
-    <link rel="icon" href="/star.ico" type="image/x-icon">
     <link rel="shortcut icon" href="/star.ico" type="image/x-icon">
     <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'neon-green': '#ccff00',
+                        'neon-red': '#ff003c',
+                        'off-white': '#f0f0f0',
+                        'deep-black': '#0a0a0a',
+                        'glass-black': 'rgba(10, 10, 10, 0.7)',
+                    },
+                    fontFamily: {
+                        // 替换为快速加载的系统字体堆栈，兼容中文字体
+                        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'sans-serif'],
+                        mono: ['SF Mono', 'Consolas', 'Liberation Mono', 'Menlo', 'Courier New', 'monospace', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei'],
+                    },
+                    animation: {
+                        'spin-slow': 'spin 8s linear infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- 引入 Google Fonts -->
+    <!-- <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@300;500;700;900&display=swap" rel="stylesheet">
+     -->
+    <style>
+        /* 全局噪点纹理 */
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.05;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* 自定义光标 */
+        body {
+            cursor: none;
+            background-color: #0a0a0a;
+            color: #f0f0f0;
+            overflow-x: hidden;
+        }
+        
+        /* 隐藏默认滚动条但保留功能 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ccff00;
+        }
+
+        .cursor-dot,
+        .cursor-outline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            z-index: 9999;
+            pointer-events: none;
+            /* 关键修改：添加混合模式，让光标自动反色 */
+            mix-blend-mode: difference;
+        }
+
+        .cursor-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #ccff00;
+        }
+
+        .cursor-outline {
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(204, 255, 0, 0.5);
+            transition: width 0.2s, height 0.2s, background-color 0.2s;
+        }
+
+        /* 悬停状态 */
+        body.hovering .cursor-outline {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(204, 255, 0, 0.1);
+            border-color: #ccff00;
+            /* 既然上面全局加了 difference，这里就不需要重复了，但留着也无妨 */
+        }
+
+        /* 故障文字效果 */
+        .glitch-text {
+            position: relative;
+        }
+        .glitch-text::before,
+        .glitch-text::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+        }
+        .glitch-text::before {
+            left: 2px;
+            text-shadow: -1px 0 #ff003c;
+            clip-path: inset(24% 0 29% 0);
+            animation: glitch-anim-1 2.5s infinite linear alternate-reverse;
+        }
+        .glitch-text::after {
+            left: -2px;
+            text-shadow: -1px 0 #ccff00;
+            clip-path: inset(54% 0 21% 0);
+            animation: glitch-anim-2 3s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim-1 {
+            0% { clip-path: inset(20% 0 80% 0); }
+            20% { clip-path: inset(60% 0 10% 0); }
+            40% { clip-path: inset(40% 0 50% 0); }
+            60% { clip-path: inset(80% 0 5% 0); }
+            80% { clip-path: inset(10% 0 70% 0); }
+            100% { clip-path: inset(30% 0 20% 0); }
+        }
+        @keyframes glitch-anim-2 {
+            0% { clip-path: inset(10% 0 60% 0); }
+            20% { clip-path: inset(30% 0 10% 0); }
+            40% { clip-path: inset(70% 0 20% 0); }
+            60% { clip-path: inset(20% 0 50% 0); }
+            80% { clip-path: inset(50% 0 30% 0); }
+            100% { clip-path: inset(5% 0 80% 0); }
+        }
+
+        /* Marquee 跑马灯 */
+        .marquee-container {
+            overflow: hidden;
+            white-space: nowrap;
+            position: absolute;
+        }
+        .marquee-content {
+            display: inline-block;
+            animation: marquee 20s linear infinite;
+        }
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* 卡片悬停特效 */
+        .project-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid #333;
+        }
+        .project-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: #ccff00;
+            box-shadow: 0 10px 30px -10px rgba(204, 255, 0, 0.2);
+        }
+
+        /* 导航栏链接动效 */
+        .nav-link {
+            position: relative;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0%;
+            height: 1px;
+            background-color: #ccff00;
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+    </style>
 </head>
-<body>
-    
-    <!-- 全新设计的导航栏 -->
-    <nav id="mainNav" class="fixed top-0 left-0 w-full z-50 py-6 px-8 flex justify-between items-center transition-all duration-300">
-        <!-- 左侧 Logo 区域 -->
-        <a href="#hero" class="group flex items-center gap-3 hover-trigger">
-            <!-- 旋转方块图标 -->
-            <div class="w-3 h-3 bg-[#ccff00] rotate-45 group-hover:rotate-180 transition-transform duration-500"></div>
-            <div class="text-white font-bold text-xl tracking-widest font-mono flex items-center">
-                MY STAR<span class="text-[#ccff00] blink-cursor ml-1">_</span>
-            </div>
-        </a>
-
-        <!-- 右侧菜单区域 -->
-    <ul class="flex space-x-2 md:space-x-4">
-        <li>
-        <a href="/audio_web/music.html" class="nav-link hover-trigger text-xl md:text-2xl font-extrabold" style="font-family: 'Space Grotesk', sans-serif;">
-            音乐中心
-        </a>
-    </li>
-    <li>
-        <a href="/tool/tomato.html" class="nav-link hover-trigger text-xl md:text-2xl font-extrabold" style="font-family: 'Space Grotesk', sans-serif;">
-            番茄钟
-        </a>
-    </li>
-    <li>
-        <a href="#about" class="nav-link hover-trigger text-xl md:text-2xl font-extrabold" style="font-family: 'Space Grotesk', sans-serif;">
-            本质
-        </a>
-    </li>
-    <li>
-        <a href="#work" class="nav-link hover-trigger text-xl md:text-2xl font-extrabold" style="font-family: 'Space Grotesk', sans-serif;">
-            产出
-        </a>
-    </li>
-    <li>
-        <a href="#contact" class="nav-link hover-trigger text-xl md:text-2xl font-extrabold" style="font-family: 'Space Grotesk', sans-serif;">
-            链接
-        </a>
-    </li>
-</ul>
-
-    </nav>
+<body class="antialiased selection:bg-neon-green selection:text-black">
 
     <!-- 噪点遮罩 -->
-    <div class="noise-bg"></div>
-    
-    <!-- 滚动进度 -->
-    <div class="scroll-progress" id="progressBar"></div>
+    <div class="noise-overlay"></div>
 
     <!-- 自定义光标 -->
     <div class="cursor-dot" id="cursorDot"></div>
     <div class="cursor-outline" id="cursorOutline"></div>
 
-    <!-- 01. HERO SECTION -->
-    <section id="hero" class="section relative overflow-hidden">
-        <!-- 动态背景 Canvas -->
-        <canvas id="heroCanvas" class="absolute inset-0 w-full h-full z-0 opacity-40"></canvas>
-        
-        <div class="relative z-10 container mx-auto">
-            <div class="glitch-wrapper">
-                <h1 class="glitch text-8xl md:text-[10rem] leading-none" data-text="CREATIVE">CREATIVE</h1>
-            </div>
-            <div class="glitch-wrapper block">
-                <h1 class="glitch text-8xl md:text-[10rem] leading-none" data-text="DEVELOPER">DEVELOPER</h1>
+    <!-- 进度条 -->
+    <div class="fixed top-0 left-0 h-1 bg-neon-green z-[100] transition-all duration-100 ease-out" id="progressBar" style="width: 0%"></div>
+
+    <!-- 全新悬浮导航栏 (Floating HUD) -->
+    <nav id="mainNav" class="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] md:w-auto transition-all duration-500 ease-out">
+        <div id="navContainer" class="bg-glass-black backdrop-blur-md border border-white/10 rounded-full px-2 py-2 flex justify-between items-center shadow-[0_8px_32px_rgba(0,0,0,0.5)] transition-all duration-300 hover:border-neon-green/30">
+            
+            <!-- Logo Area -->
+            <a href="#hero" class="hover-trigger pl-4 pr-6 py-2 group flex items-center gap-3 border-r border-white/10">
+                <div class="relative w-4 h-4">
+                    <div class="absolute inset-0 bg-neon-green transform rotate-45 group-hover:rotate-180 transition-transform duration-500"></div>
+                    <div class="absolute inset-0 bg-neon-green blur-[2px] opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                </div>
+                <span class="font-mono font-bold text-sm md:text-base tracking-tighter">MY_STAR<span class="text-neon-green">_</span></span>
+            </a>
+
+            <!-- Desktop Menu -->
+            <ul class="hidden md:flex items-center space-x-1 px-2 font-mono text-xs font-bold text-gray-400">
+                <li>
+                    <a href="https://blog.solmount.top/" class="hover-trigger nav-link block px-4 py-2 hover:text-white transition-colors">博客</a>
+                </li>
+                <li>
+                    <a href="#work" class="hover-trigger nav-link block px-4 py-2 hover:text-white transition-colors">工作</a>
+                </li>
+                <li>
+                    <a href="#tools" class="hover-trigger nav-link block px-4 py-2 hover:text-white transition-colors">工具</a>
+                </li>
+            </ul>
+
+            <!-- Action Button -->
+            <div class="pl-2">
+                <a href="#contact" class="hover-trigger flex items-center gap-2 bg-white text-black px-5 py-2.5 rounded-full font-bold text-xs hover:bg-neon-green transition-colors font-mono">
+                    <span>CONTACT</span>
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </a>
             </div>
             
-            <div class="mt-12 flex items-center gap-6">
-                <div class="w-24 h-1 bg-white"></div>
-                <p class="text-xl md:text-2xl max-w-lg font-light text-gray-400">
-                    我不写代码，我重构<span class="text-white font-bold">现实</span>。<br>
-                    打破规则，重塑秩序。
-                </p>
-            </div>
+            <!-- Mobile Menu Button (Hidden on Desktop) -->
+            <!-- <button class="md:hidden text-white px-4 hover-trigger">☰</button> -->
         </div>
-<!-- <div class="video-container">
-        <video autoplay loop muted oncontextmenu="return false" >
-            <source src="videos/demo.mp4" type="video/mp4">
-        </video>
-    </div>
+    </nav>
 
-    <div class="carousel">
-        <img oncontextmenu="return false" src="images/p1.jpg">
-        <img oncontextmenu="return false" src="images/p2.jpg">
-        <img oncontextmenu="return false" src="images/p3.jpg">
-        <img oncontextmenu="return false" src="images/p4.jpg">
-        <img oncontextmenu="return false" src="images/p5.jpg">
-    </div> -->
-        <div class="absolute bottom-10 right-10 animate-bounce">
-            <span class="text-xs font-mono">SCROLL TO EXPLORE ↓</span>
+    <!-- 01. Hero Section -->
+    <section id="hero" class="relative h-screen flex items-center justify-center overflow-hidden border-b border-gray-900">
+        <canvas id="heroCanvas" class="absolute inset-0 z-0 opacity-60"></canvas>
+        
+        <div class="relative z-10 text-center px-4 mix-blend-difference">
+            <div class="mb-6 inline-flex items-center gap-2 border border-neon-green/30 bg-neon-green/5 px-4 py-1.5 rounded-full text-neon-green font-mono text-[10px] md:text-xs tracking-widest hover-trigger cursor-default hover:bg-neon-green/10 transition-colors">
+                <span class="w-2 h-2 rounded-full bg-neon-green animate-pulse"></span>
+                出发，到新的爱与新的喧嚣中去！
+            </div>
+            <h1 class="glitch-text text-6xl md:text-9xl font-black leading-tight tracking-tighter" data-text="敬过往">
+                敬过往
+            </h1>
+            <h1 class="glitch-text text-6xl md:text-9xl font-black leading-tight tracking-tighter text-outline text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-500" data-text="爱当下，向未来">
+                爱当下，向未来
+            </h1>
+            
+            <div class="mt-12 flex flex-col items-center gap-6">
+                <p class="max-w-lg text-gray-400 font-mono text-sm md:text-base leading-relaxed">
+                    > 初始化现实重构程序...<br>
+                    > 正在加载：打破规则.exe<br>
+                    > <span class="text-white">我不写代码，我编织数字梦境。</span>
+                </p>
+                <a href="#work" class="hover-trigger mt-12 group flex flex-col items-center gap-2 text-xs font-mono text-gray-500 hover:text-neon-green transition-colors">
+                    SCROLL TO EXPLORE
+                    <svg class="w-4 h-4 animate-bounce group-hover:text-neon-green text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                </a>
+            </div>
         </div>
     </section>
 
-    <!-- 02. ABOUT SECTION -->
-    <section id="about" class="section bg-white text-black relative">
-        <div class="marquee-container top-20 text-black">
-            <div class="marquee-content">WHO AM I ? WHO AM I ? WHO AM I ? WHO AM I ?</div>
+    <!-- 02. About Section -->
+    <section id="about" class="py-32 relative overflow-hidden bg-off-white text-deep-black">
+        <!-- 跑马灯背景 -->
+        <div class="marquee-container top-10 w-full opacity-10 pointer-events-none">
+            <div class="marquee-content text-[10rem] font-black font-sans leading-none whitespace-nowrap">
+                WHO AM I? WHO AM I? WHO AM I? WHO AM I? WHO AM I? WHO AM I?
+            </div>
         </div>
 
-        <div class="container mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 z-10">
-            <div class="flex flex-col justify-center">
-                <h2 class="text-6xl md:text-8xl font-black mb-8 tracking-tighter">关于<br>本体</h2>
-                <div class="w-full h-[2px] bg-black mb-8"></div>
+        <div class="container mx-auto px-6 relative z-10 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+            <div class="space-y-8">
+                <h2 class="text-5xl md:text-7xl font-bold tracking-tighter">关于<br><span class="text-neon-red">本体_</span></h2>
+                <div class="h-1 w-24 bg-deep-black"></div>
                 <p class="text-xl md:text-2xl font-bold leading-relaxed">
-                    我是一名全栈开发者，也是一名视觉设计师。但我更愿意称自己为 <span class="bg-black text-[#ccff00] px-2">数字游侠</span>。
+                    全栈开发只是伪装，我的真实身份是<span class="bg-black text-neon-green px-2 py-1 transform -rotate-2 inline-block">数字游侠</span>。
                 </p>
-                <p class="mt-4 text-lg text-gray-600">
-                    厌倦了千篇一律的 Bootstrap 风格和 Material Design。我相信网页应该是狂野的、富有表现力的画布，而不仅仅是信息的容器。
+                <p class="text-gray-600 font-mono text-sm md:text-base">
+                    在校大学生一枚，热爱编程与设计，虽然一切才刚刚开始。但我相信代码不仅仅是工具，更是创造奇迹的魔法。无论是前端的炫酷交互，还是后端的稳健架构，我都乐此不疲地探索与实践。欢迎来到我的数字世界，让我们一起颠覆常规，创造未来！
                 </p>
                 
-                <div class="mt-8 flex gap-4 font-mono text-sm flex-wrap">
-                    <span class="border border-black px-3 py-1 rounded-full hover:bg-black hover:text-white transition cursor-default hover-trigger">React.js</span>
-                    <span class="border border-black px-3 py-1 rounded-full hover:bg-black hover:text-white transition cursor-default hover-trigger">Three.js</span>
-                    <span class="border border-black px-3 py-1 rounded-full hover:bg-black hover:text-white transition cursor-default hover-trigger">WebGL</span>
-                    <span class="border border-black px-3 py-1 rounded-full hover:bg-black hover:text-white transition cursor-default hover-trigger">Blender</span>
+                <div class="flex flex-wrap gap-3 font-mono text-xs">
+                    <span class="border border-black px-4 py-2 hover:bg-black hover:text-white transition cursor-default hover-trigger">markdown</span>
+                    <span class="border border-black px-4 py-2 hover:bg-black hover:text-white transition cursor-default hover-trigger">深度学习</span>
+                    <span class="border border-black px-4 py-2 hover:bg-black hover:text-white transition cursor-default hover-trigger">单片机</span>
+                    <span class="border border-black px-4 py-2 hover:bg-black hover:text-white transition cursor-default hover-trigger">前后端</span>
                 </div>
             </div>
-            
-            <!-- 视觉图：一个纯CSS画的抽象图形 -->
-            <div class="relative flex items-center justify-center">
-                <div class="w-64 h-64 border-4 border-black rotate-45 absolute hover-trigger transition duration-500 hover:rotate-90 hover:scale-110 hover:bg-[#ccff00]"></div>
-                <div class="w-64 h-64 border-4 border-black -rotate-12 absolute hover-trigger transition duration-500 hover:-rotate-45 hover:scale-90 hover:bg-[#ff003c]"></div>
-                <!-- <div class="w-full h-full absolute flex items-center justify-center mix-blend-difference text-white font-bold text-9xl select-none">?</div> -->
+
+            <!-- 视觉元素：互动图形 -->
+            <div class="flex justify-center items-center h-full min-h-[400px]">
+                <div class="relative w-64 h-64 hover-trigger group">
+                    <div class="absolute inset-0 border-4 border-black rotate-0 group-hover:rotate-45 transition-transform duration-700 bg-transparent z-20"></div>
+                    <div class="absolute inset-0 border-4 border-black rotate-12 group-hover:rotate-90 transition-transform duration-700 bg-neon-green z-10 opacity-80"></div>
+                    <div class="absolute inset-0 border-4 border-black -rotate-12 group-hover:-rotate-45 transition-transform duration-700 bg-neon-red z-0 opacity-80 translate-x-4 translate-y-4"></div>
+                    <div class="absolute inset-0 flex items-center justify-center font-black text-6xl z-30 mix-blend-difference text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        ?
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- 03. WORK SECTION -->
-    <section id="work" class="section">
-        <div class="container mx-auto">
-            <div class="flex justify-between items-end mb-16">
-                <h2 class="text-5xl md:text-7xl font-bold text-[#ccff00]">精选项目</h2>
-                <span class="font-mono text-gray-500">SELECTED_WORKS_2024</span>
+    <!-- 03. Work Section -->
+    <section id="work" class="py-32 bg-deep-black text-white relative">
+        <div class="container mx-auto px-6">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-20 border-b border-gray-800 pb-8">
+                <h2 class="text-5xl md:text-7xl font-bold tracking-tighter"><span class="text-neon-green">精选</span>项目</h2>
+                <span class="font-mono text-gray-500 mt-4 md:mt-0">还在编辑中</span>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <!-- Project 1 -->
-                <a href="#" class="group hover-trigger">
-                    <div class="brutal-card h-96 p-6 flex flex-col justify-between">
-                        <div class="font-mono text-xs border-b border-gray-600 pb-2 flex justify-between">
+                <a href="#" class="project-card group hover-trigger block bg-[#111] p-6 h-[450px] relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-100 transition-opacity">
+                        <svg class="w-12 h-12 text-white transform group-hover:rotate-45 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                    </div>
+                    <div class="flex flex-col h-full justify-between relative z-10">
+                        <div class="font-mono text-xs text-gray-500 border-b border-gray-800 pb-4 mb-4 flex justify-between">
                             <span>001</span>
-                            <span>WEB APP</span>
+                            <span class="text-neon-green">装修中</span>
                         </div>
-                        <div>
-                            <h3 class="text-4xl font-bold mb-2 group-hover:italic">赛博<br>金融大屏</h3>
-                            <p class="text-sm opacity-60 mt-4 group-hover:opacity-100">为一家FinTech公司设计的超现实数据可视化后台。</p>
-                        </div>
-                        <div class="self-end">
-                            <span class="text-2xl">↗</span>
+                        <div class="mt-auto">
+                            <h3 class="text-3xl font-bold mb-4 group-hover:text-neon-green transition-colors">敬请期待</h3>
+                            <p class="text-sm text-gray-400 leading-relaxed mb-6">如果没有天赋，那就一直重复。</p>
+                            <div class="w-10 h-10 rounded-full border border-white flex items-center justify-center group-hover:bg-neon-green group-hover:border-neon-green group-hover:text-black transition-all">
+                                ↗
+                            </div>
                         </div>
                     </div>
                 </a>
 
                 <!-- Project 2 -->
-                <a href="#" class="group hover-trigger">
-                    <div class="brutal-card h-96 p-6 flex flex-col justify-between" style="border-color: #ff003c;">
-                        <div class="font-mono text-xs border-b border-gray-600 pb-2 flex justify-between">
+                <a href="#" class="project-card group hover-trigger block bg-[#111] p-6 h-[450px] relative overflow-hidden" style="border-top-color: #ff003c;">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-100 transition-opacity">
+                        <svg class="w-12 h-12 text-neon-red transform group-hover:scale-110 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <div class="flex flex-col h-full justify-between relative z-10">
+                        <div class="font-mono text-xs text-gray-500 border-b border-gray-800 pb-4 mb-4 flex justify-between">
                             <span>002</span>
-                            <span>ART</span>
+                            <span class="text-neon-red">装修中</span>
                         </div>
-                        <div>
-                            <h3 class="text-4xl font-bold mb-2 group-hover:italic">生成式<br>NFT合集</h3>
-                            <p class="text-sm opacity-60 mt-4 group-hover:opacity-100">基于p5.js的算法艺术生成器。</p>
-                        </div>
-                        <div class="self-end">
-                            <span class="text-2xl">↗</span>
+                        <div class="mt-auto">
+                            <h3 class="text-3xl font-bold mb-4 group-hover:text-neon-red transition-colors">敬请期待</h3>
+                            <p class="text-sm text-gray-400 leading-relaxed mb-6">慢也好，步子小也好，是在往前走就好。</p>
+                            <div class="w-10 h-10 rounded-full border border-white flex items-center justify-center group-hover:bg-neon-red group-hover:border-neon-red group-hover:text-white transition-all">
+                                ↗
+                            </div>
                         </div>
                     </div>
                 </a>
 
                 <!-- Project 3 -->
-                <a href="#" class="group hover-trigger">
-                    <div class="brutal-card h-96 p-6 flex flex-col justify-between">
-                        <div class="font-mono text-xs border-b border-gray-600 pb-2 flex justify-between">
+                <a href="#" class="project-card group hover-trigger block bg-[#111] p-6 h-[450px] relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-100 transition-opacity">
+                        <svg class="w-12 h-12 text-white transform group-hover:-rotate-12 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </div>
+                    <div class="flex flex-col h-full justify-between relative z-10">
+                        <div class="font-mono text-xs text-gray-500 border-b border-gray-800 pb-4 mb-4 flex justify-between">
                             <span>003</span>
-                            <span>DESIGN</span>
+                            <span class="text-white">装修中</span>
                         </div>
-                        <div>
-                            <h3 class="text-4xl font-bold mb-2 group-hover:italic">无声<br>黑白摄影</h3>
-                            <p class="text-sm opacity-60 mt-4 group-hover:opacity-100">个人摄影作品集，极简主义风格。</p>
-                        </div>
-                        <div class="self-end">
-                            <span class="text-2xl">↗</span>
+                        <div class="mt-auto">
+                            <h3 class="text-3xl font-bold mb-4 group-hover:italic transition-all">敬请期待</h3>
+                            <p class="text-sm text-gray-400 leading-relaxed mb-6">所以的负担，都会变成礼物。</p>
+                            <div class="w-10 h-10 rounded-full border border-white flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
+                                ↗
+                            </div>
                         </div>
                     </div>
                 </a>
@@ -199,31 +392,96 @@
         </div>
     </section>
 
-    <!-- 04. CONTACT SECTION -->
-    <section id="contact" class="section bg-[#ccff00] text-black">
-        <div class="container mx-auto text-center hover-reveal">
-            <p class="font-mono mb-4 text-xl">准备好开始了吗？</p>
-            <a href="mailto:hello@example.com" class="hover-trigger relative inline-block">
-                <h2 class="text-[12vw] font-black leading-none big-border-text cursor-none">
+    <section id="tools" class="py-24 bg-[#1a1a1a] border-y border-gray-800">
+    <div class="container mx-auto px-6 text-center">
+        <h3 class="font-mono text-neon-green mb-12 text-xl">web小工具</h3>
+        <div class="flex flex-wrap justify-center gap-8">
+            
+            <a href="tool/tomato.html" target="_blank" class="block group hover-trigger p-8 border border-gray-700 hover:border-neon-green transition-all cursor-pointer w-64 text-decoration-none">
+                <div class="text-4xl mb-4 group-hover:scale-110 transition-transform">🍅</div>
+                <h4 class="font-bold text-xl mb-2 text-white">番茄钟</h4>
+                <p class="text-xs text-gray-500 font-mono">开始专注</p>
+            </a>
+
+            <a href="audio_web/index.html" target="_blank" class="block group hover-trigger p-8 border border-gray-700 hover:border-neon-green transition-all cursor-pointer w-64 text-decoration-none">
+                <div class="text-4xl mb-4 group-hover:scale-110 transition-transform">🎵</div>
+                <h4 class="font-bold text-xl mb-2 text-white">音乐播放器</h4>
+                <p class="text-xs text-gray-500 font-mono">感受音乐的旋律</p>
+            </a>
+
+        </div>
+    </div>
+</section>
+
+    <!-- 05. Contact Section -->
+    <section id="contact" class="py-32 bg-neon-green text-black relative overflow-hidden">
+        <div class="container mx-auto px-6 text-center relative z-10">
+            <p class="font-mono mb-8 text-xl font-bold tracking-widest">系统准备就绪</p>
+            
+            <a href="mailto:hello@example.com" class="hover-trigger relative inline-block group">
+                <h2 class="text-[12vw] font-black leading-none tracking-tighter transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-2">
                     SAY HELLO
                 </h2>
-                <h2 class="text-[12vw] font-black leading-none absolute top-0 left-0 w-full text-black opacity-0 transition hover:opacity-100 cursor-none transform hover:-translate-y-4 hover:translate-x-4">
-                    SAY HELLO
-                </h2>
+                <!-- 装饰性箭头 -->
+                <div class="absolute -right-12 -bottom-4 md:-right-24 md:bottom-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <svg class="w-16 h-16 md:w-32 md:h-32 transform rotate-45" fill="currentColor" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+                </div>
             </a>
             
-            <div class="mt-20 flex justify-center gap-8 border-t border-black pt-8 font-bold font-mono">
-                <a href="https://github.com/Markfirst650" class="hover:underline hover-trigger">GITHUB</a>
-                <a href="https://space.bilibili.com/534962810?spm_id_from=333.1007.0.0" class="hover:underline hover-trigger">BILIBILI</a>
+            <div class="mt-24 flex flex-col md:flex-row justify-between items-center border-t-2 border-black pt-8 font-bold font-mono text-sm md:text-base">
+                <div class="flex gap-8 mb-4 md:mb-0">
+                    <a href="https://github.com/Markfirst650" class="hover:underline hover-trigger decoration-2 underline-offset-4">GITHUB_</a>
+                    <!-- <a href="#" class="hover:underline hover-trigger decoration-2 underline-offset-4">BILIBILI_</a>
+                    <a href="#" class="hover:underline hover-trigger decoration-2 underline-offset-4">TWITTER_</a> -->
+                </div>
+                <div class="opacity-60">
+                    &copy; 2025 Markfirst650. All systems operational.
+                </div>
             </div>
-            
-            <footer class="mt-20 text-xs font-mono opacity-60">
-                &copy; 2025 Markfirst650. All rights reserved.
-            </footer>
+        </div>
+ <div class="container mx-auto px-6 mt-8 pb-12"> 
+    <div class="flex flex-col items-center justify-center py-2">
+        <a 
+            href="https://beian.miit.gov.cn" 
+            target="_blank" 
+            class="text-sm text-gray-600 hover:text-gray-800 hover:underline transition-colors"
+        >
+            皖ICP备2025105458号-1
+        </a>
+    </div>
+</div>
+        
+        <!-- 背景装饰 -->
+        <div class="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none">
+            <div class="grid grid-cols-12 h-full">
+                <div class="border-r border-black h-full"></div>
+                <div class="border-r border-black h-full"></div>
+                <div class="border-r border-black h-full"></div>
+                <div class="border-r border-black h-full"></div>
+                <div class="border-r border-black h-full"></div>
+                <div class="border-r border-black h-full"></div>
+                <div class="border-r border-black h-full"></div>
+                <div class="border-r border-black h-full"></div>
+                <div class="border-r border-black h-full"></div>
+                <div class="border-r border-black h-full"></div>
+                <div class="border-r border-black h-full"></div>
+                <div class="border-r border-black h-full"></div>
+            </div>
         </div>
     </section>
+
+    <!-- 悬浮音乐组件 (视觉模拟) -->
+    </script>
+    <div class="music-widget" id="musicWidget">
+    🎵
+</div>
+
+<audio id="musicAudio" src="music/安静.mp3"></audio>
+
+
+    <script src="js/main.js"></script>
     <script>
-        // --- 1. 自定义光标逻辑 ---
+        // --- 1. 光标逻辑 (优化版) ---
         const cursorDot = document.getElementById('cursorDot');
         const cursorOutline = document.getElementById('cursorOutline');
         const hoverTriggers = document.querySelectorAll('.hover-trigger');
@@ -232,52 +490,72 @@
             const posX = e.clientX;
             const posY = e.clientY;
 
-            // 点是实时跟随
+            // 点：无延迟
             cursorDot.style.left = `${posX}px`;
             cursorDot.style.top = `${posY}px`;
 
-            // 圆圈有延迟动画效果
+            // 圈：使用 animate API 实现平滑跟随
             cursorOutline.animate({
                 left: `${posX}px`,
                 top: `${posY}px`
             }, { duration: 500, fill: "forwards" });
         });
 
-        // 悬停效果
-        hoverTriggers.forEach(trigger => {
-            trigger.addEventListener('mouseenter', () => {
+        // 悬停检测
+        document.addEventListener('mouseover', (e) => {
+            if (e.target.closest('.hover-trigger')) {
                 document.body.classList.add('hovering');
-            });
-            trigger.addEventListener('mouseleave', () => {
-                document.body.classList.remove('hovering');
-            });
-        });
-
-        // --- 2. 页面滚动进度条 & 导航栏变形 ---
-        const nav = document.getElementById('mainNav');
-
-        window.addEventListener('scroll', () => {
-            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
-            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-            const scrolled = (winScroll / height) * 100;
-            document.getElementById("progressBar").style.height = scrolled + "%";
-
-            // 导航栏滚动逻辑
-            if (winScroll > 50) {
-                nav.classList.add('scrolled');
-                nav.classList.remove('py-6');
-                // padding 由 css .scrolled 控制
             } else {
-                nav.classList.remove('scrolled');
-                nav.classList.add('py-6');
+                document.body.classList.remove('hovering');
             }
         });
 
-        // --- 3. Hero背景 Canvas 矩阵粒子效果 ---
+        // --- 2. 导航栏动态效果 ---
+        const nav = document.getElementById('mainNav');
+        const navContainer = document.getElementById('navContainer');
+        const progressBar = document.getElementById('progressBar');
+
+        window.addEventListener('scroll', () => {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            const scrollPercent = (scrollTop / docHeight) * 100;
+            
+            progressBar.style.width = scrollPercent + '%';
+
+            // 滚动超过 50px 后，导航栏变得更紧凑（胶囊收缩效果）
+            if (scrollTop > 50) {
+                navContainer.classList.add('py-2', 'px-3');
+                navContainer.classList.remove('py-3', 'px-6');
+                // 边框更明显
+                navContainer.classList.add('border-white/20');
+                navContainer.classList.remove('border-white/10');
+            } else {
+                navContainer.classList.remove('py-2', 'px-3');
+                navContainer.classList.add('py-3', 'px-6');
+                
+                navContainer.classList.remove('border-white/20');
+                navContainer.classList.add('border-white/10');
+            }
+        });
+
+        // --- 3. Canvas 粒子 (优化性能版) ---
         const canvas = document.getElementById('heroCanvas');
         const ctx = canvas.getContext('2d');
         let width, height;
         let particles = [];
+        let mouse = { x: null, y: null };
+
+        // 监听鼠标位置以进行互动
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+        
+        // 鼠标移出 Canvas 时清空
+        window.addEventListener('mouseout', () => {
+            mouse.x = null;
+            mouse.y = null;
+        });
 
         function resize() {
             width = window.innerWidth;
@@ -292,17 +570,35 @@
                 this.x = Math.random() * width;
                 this.y = Math.random() * height;
                 this.size = Math.random() * 2 + 0.5;
-                this.speedX = Math.random() * 2 - 1;
-                this.speedY = Math.random() * 2 - 1;
-                this.color = Math.random() > 0.5 ? '#ccff00' : '#ffffff';
+                this.speedX = (Math.random() * 1.5 - 0.75); // 稍微减慢速度
+                this.speedY = (Math.random() * 1.5 - 0.75);
+                this.color = Math.random() > 0.8 ? '#ccff00' : '#444444'; // 更多灰色，少量绿色
             }
             update() {
                 this.x += this.speedX;
                 this.y += this.speedY;
+
+                // 简单的边界检查
                 if (this.x > width) this.x = 0;
-                if (this.x < 0) this.x = width;
+                else if (this.x < 0) this.x = width;
                 if (this.y > height) this.y = 0;
-                if (this.y < 0) this.y = height;
+                else if (this.y < 0) this.y = height;
+
+                // 鼠标互动：如果鼠标靠近，粒子会被稍微推开
+                if (mouse.x != null) {
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < 100) {
+                        const forceDirectionX = dx / distance;
+                        const forceDirectionY = dy / distance;
+                        const force = (100 - distance) / 100;
+                        const directionX = forceDirectionX * force * 2; // 推力强度
+                        const directionY = forceDirectionY * force * 2;
+                        this.x -= directionX;
+                        this.y -= directionY;
+                    }
+                }
             }
             draw() {
                 ctx.fillStyle = this.color;
@@ -314,7 +610,9 @@
 
         function initParticles() {
             particles = [];
-            for (let i = 0; i < 100; i++) {
+            // 根据屏幕大小调整粒子数量，避免低端设备卡顿
+            const particleCount = width < 768 ? 50 : 100; 
+            for (let i = 0; i < particleCount; i++) {
                 particles.push(new Particle());
             }
         }
@@ -322,18 +620,18 @@
         function animate() {
             ctx.clearRect(0, 0, width, height);
             
-            // 简单的连线效果
             for (let i = 0; i < particles.length; i++) {
                 particles[i].update();
                 particles[i].draw();
                 
+                // 连线逻辑
                 for (let j = i; j < particles.length; j++) {
                     const dx = particles[i].x - particles[j].x;
                     const dy = particles[i].y - particles[j].y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     
                     if (distance < 100) {
-                        ctx.strokeStyle = `rgba(255, 255, 255, ${1 - distance/100})`;
+                        ctx.strokeStyle = `rgba(100, 100, 100, ${1 - distance/100})`;
                         ctx.lineWidth = 0.5;
                         ctx.beginPath();
                         ctx.moveTo(particles[i].x, particles[i].y);
@@ -350,15 +648,5 @@
         animate();
 
     </script>
-    <div class="music-widget" id="musicWidget">
-    🎵
-</div>
-
-<audio id="musicAudio" src="music/安静.mp3"></audio>
-
-
-    <script src="js/main.js"></script>
 </body>
-
 </html>
-

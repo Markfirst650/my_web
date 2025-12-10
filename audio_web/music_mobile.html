@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Star Music Mobile</title>
+    <link rel="shortcut icon" href="music.ico" type="image/x-icon">
+    <style>
+        :root {
+            --primary: #ccff00;
+            --primary-dim: rgba(204, 255, 0, 0.1);
+            --bg-dark: #050505;
+            --glass: rgba(255, 255, 255, 0.08);
+            --glass-heavy: rgba(20, 20, 20, 0.9);
+            --text-main: #ffffff;
+            --text-sub: rgba(255, 255, 255, 0.5);
+            --ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            height: 100dvh; /* 适配移动端动态高度 */
+            width: 100vw;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- 动态背景 --- */
+        #bg-art {
+            position: absolute; inset: 0; z-index: 0;
+            background-size: cover; background-position: center;
+            filter: blur(80px) brightness(0.4); opacity: 0.8;
+            transition: background-image 0.8s ease;
+        }
+        .noise {
+            position: absolute; inset: 0; z-index: 1; opacity: 0.05; pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        /* --- 顶部栏 --- */
+        header {
+            position: relative; z-index: 10;
+            height: 60px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+        }
+        .logo { font-weight: 800; font-size: 1.1rem; letter-spacing: 1px; color: var(--primary); }
+        .btn-icon {
+            width: 40px; height: 40px; border-radius: 50%; border: none;
+            background: var(--glass); color: white; display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(10px); cursor: pointer; transition: transform 0.2s;
+        }
+        .btn-icon:active { transform: scale(0.9); }
+        .btn-icon svg { width: 20px; height: 20px; fill: currentColor; }
+
+        /* --- 主内容区 (唱片/歌词切换) --- */
+        #main-stage {
+            flex: 1; position: relative; z-index: 10;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            perspective: 1000px;
+        }
+
+        /* 视图容器 */
+        .view-container {
+            width: 100%; height: 100%;
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity 0.4s ease, transform 0.4s var(--ease-out);
+            backface-visibility: hidden;
+        }
+
+        /* 唱片视图 */
+        #view-disk { opacity: 1; transform: scale(1); }
+        #view-disk.hidden { opacity: 0; transform: scale(0.8); pointer-events: none; }
+
+        .disk-wrapper {
+            width: 75vw; height: 75vw; max-width: 350px; max-height: 350px;
+            position: relative;
+        }
+        .disk-art {
+            width: 100%; height: 100%; border-radius: 50%;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            animation: spin 20s linear infinite;
+            position: relative; z-index: 2;
+            border: 4px solid rgba(255,255,255,0.05);
+        }
+        .disk-art img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .disk-glow {
+            position: absolute; inset: -20px; border-radius: 50%;
+            background: var(--primary); filter: blur(60px); opacity: 0;
+            transition: opacity 1s; z-index: 1;
+        }
+
+        /* 歌词视图 */
+        #view-lyrics { opacity: 0; transform: scale(1.1); pointer-events: none; }
+        #view-lyrics.show { opacity: 1; transform: scale(1); pointer-events: auto; }
+        
+        .lyrics-scroll {
+            width: 100%; height: 60vh;
+            overflow-y: auto; text-align: center;
+            mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+            -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+            padding: 50% 20px; /* 让第一句能在中间 */
+        }
+        .lyric-line {
+            padding: 12px 0; color: var(--text-sub); font-size: 1.1rem;
+            transition: all 0.3s;
+        }
+        .lyric-line.active { color: var(--primary); font-size: 1.5rem; font-weight: bold; text-shadow: 0 0 15px var(--primary-dim); }
+
+        /* 切换提示 */
+        .tap-hint {
+            position: absolute; bottom: 20px; font-size: 0.8rem;
+            color: rgba(255,255,255,0.3); letter-spacing: 1px;
+            pointer-events: none;
+        }
+
+        /* --- 底部控制区 --- */
+        #bottom-controls {
+            position: relative; z-index: 20;
+            padding: 20px 24px 40px 24px;
+            background: linear-gradient(to top, #000 20%, transparent);
+            display: flex; flex-direction: column; gap: 20px;
+        }
+
+        /* 信息 */
+        .track-info { text-align: left; margin-bottom: 5px; }
+        .track-title { font-size: 1.6rem; font-weight: 700; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
+        .track-artist { font-size: 1rem; color: var(--primary); opacity: 0.8; }
+
+        /* 进度条 */
+        .progress-container { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--text-sub); font-variant-numeric: tabular-nums; }
+        .progress-bar-wrap { flex: 1; height: 20px; display: flex; align-items: center; cursor: pointer; }
+        .progress-track { width: 100%; height: 4px; background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden; position: relative; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; border-radius: 4px; position: relative; }
+        /* 进度条拖拽点 */
+        .progress-thumb { 
+            position: absolute; right: -6px; top: 50%; transform: translateY(-50%);
+            width: 12px; height: 12px; background: white; border-radius: 50%; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.2s;
+        }
+        .progress-bar-wrap:active .progress-thumb { opacity: 1; }
+
+        /* 按钮组 */
+        .btn-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+        .ctrl-btn { background: none; border: none; color: white; cursor: pointer; padding: 10px; }
+        .ctrl-btn:active { transform: scale(0.9); color: var(--primary); }
+        .ctrl-btn svg { fill: currentColor; }
+        
+        .play-btn {
+            width: 70px; height: 70px; border-radius: 50%;
+            background: white; color: black;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+        .play-btn:active { transform: scale(0.95); background: var(--primary); }
+        .play-btn svg { width: 32px; height: 32px; fill: currentColor; }
+
+        /* --- 底部抽屉 (歌单) --- */
+        #playlist-drawer {
+            position: fixed; inset: 0; z-index: 100;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        #playlist-drawer.open { opacity: 1; pointer-events: auto; }
+        
+        .drawer-content {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            height: 70vh; background: #1a1a1a;
+            border-radius: 24px 24px 0 0;
+            display: flex; flex-direction: column;
+            transform: translateY(100%); transition: transform 0.4s var(--ease-out);
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        #playlist-drawer.open .drawer-content { transform: translateY(0); }
+
+        .drawer-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .drawer-title { font-size: 1.1rem; font-weight: bold; }
+        .drawer-list { flex: 1; overflow-y: auto; padding: 10px; }
+        
+        .list-item {
+            display: flex; align-items: center; padding: 12px; margin-bottom: 8px;
+            border-radius: 12px; background: rgba(255,255,255,0.03);
+            transition: all 0.2s;
+        }
+        .list-item.active { background: var(--primary-dim); border: 1px solid rgba(204,255,0,0.3); }
+        .list-item img { width: 48px; height: 48px; border-radius: 8px; margin-right: 12px; object-fit: cover; }
+        .list-info h4 { font-size: 1rem; color: white; margin-bottom: 4px; }
+        .list-info p { font-size: 0.8rem; color: var(--text-sub); }
+        .list-item.active h4 { color: var(--primary); }
+
+        /* 上传按钮 */
+        .upload-btn {
+            margin: 15px; padding: 15px; border-radius: 12px;
+            background: rgba(255,255,255,0.1); border: 1px dashed rgba(255,255,255,0.3);
+            color: var(--text-sub); text-align: center; font-size: 0.9rem;
+        }
+        .upload-btn:active { background: rgba(255,255,255,0.2); color: white; }
+
+        /* 动画类 */
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .paused { animation-play-state: paused !important; }
+        .hidden-el { display: none !important; }
+
+        /* Toast */
+        .toast {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9);
+            background: rgba(255,255,255,0.95); color: black; padding: 12px 24px;
+            border-radius: 30px; font-weight: 600; opacity: 0; pointer-events: none;
+            transition: all 0.3s; z-index: 200; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+
+    </style>
+</head>
+<body>
+
+    <div id="bg-art"></div>
+    <div class="noise"></div>
+
+    <header>
+        <div class="logo">STAR MUSIC</div>
+        <button class="btn-icon" id="theme-btn" style="color:var(--primary)">
+            <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z"/></svg>
+        </button>
+    </header>
+
+    <main id="main-stage">
+        
+        <div id="view-disk" class="view-container">
+            <div class="disk-wrapper">
+                <div class="disk-glow" id="disk-glow"></div>
+                <div class="disk-art paused" id="disk-art">
+                    <img id="cover-img" src="" alt="Cover">
+                </div>
+            </div>
+        </div>
+
+        <div id="view-lyrics" class="view-container">
+            <div class="lyrics-scroll" id="lyrics-box">
+                </div>
+        </div>
+
+        <div class="tap-hint" id="tap-hint">点击切换视图</div>
+    </main>
+
+    <section id="bottom-controls">
+        <div class="track-info">
+            <h2 id="track-title" class="track-title">Loading...</h2>
+            <p id="track-artist" class="track-artist">Star Audio</p>
+        </div>
+
+        <div class="progress-container">
+            <span id="curr-time">0:00</span>
+            <div class="progress-bar-wrap" id="prog-wrap">
+                <div class="progress-track">
+                    <div class="progress-fill" id="prog-fill"></div>
+                    <div class="progress-thumb"></div>
+                </div>
+            </div>
+            <span id="dur-time">0:00</span>
+        </div>
+
+        <div class="btn-row">
+            <button class="ctrl-btn" id="mode-btn">
+                <svg width="24" height="24" viewBox="0 0 24 24"><path d="M17 2l5 4-5 4V7c-4.43 0-8 2.68-8 8h-2c0-5.52 4.47-10 10-10V2zM7 22l-5-4 5-4v3c4.43 0 8-2.68 8-8h2c0 5.52-4.47 10-10 10v3z"/></svg>
+            </button>
+            
+            <button class="ctrl-btn" id="prev-btn">
+                <svg width="28" height="28" viewBox="0 0 24 24"><path d="M6 6h2v12H6V6zm3.5 6l8.5 6V6l-8.5 6z"/></svg>
+            </button>
+            
+            <button class="play-btn" id="play-btn">
+                <svg id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <svg id="icon-pause" class="hidden-el" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            </button>
+            
+            <button class="ctrl-btn" id="next-btn">
+                <svg width="28" height="28" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+            </button>
+            
+            <button class="ctrl-btn" id="list-btn">
+                <svg width="24" height="24" viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+            </button>
+        </div>
+    </section>
+
+    <div id="playlist-drawer">
+        <div class="drawer-content">
+            <div class="drawer-header">
+                <span class="drawer-title">播放列表</span>
+                <span style="font-size:0.8rem; color:var(--text-sub)" id="track-count">0首</span>
+            </div>
+            <div class="drawer-list" id="drawer-list"></div>
+            <div class="upload-btn" id="upload-trigger">
+                + 上传本地歌曲 (MP3/LRC)
+            </div>
+        </div>
+    </div>
+    
+    <input type="file" id="file-input" accept="audio/*,.lrc,image/*" multiple style="display:none">
+
+    <div id="toast" class="toast">提示信息</div>
+    <audio id="audio-core"></audio>
+
+    <script>
+        // ----------------------------------------------------
+        // 数据层：完全复用你的核心数据，保证兼容性
+        // ----------------------------------------------------
+         let playlist = [
+            { id: 1, title: "交换余生", artist: "林俊杰", duration: "3:45", src: "/music/交换余生.mp3", cover: "cover/ljj.webp" },
+            { id: 2, title: "如果当时", artist: "许嵩", duration: "4:12", src: "/music/如果当时.mp3", cover: "cover/xs.webp" },
+            { id: 3, title: "遗失的心跳", artist: "萧亚轩", duration: "5:01", src: "/music/遗失的心跳.mp3", cover: "cover/xyx.webp" },
+            { id: 4, title: "一点点", artist: "董唧唧&芊芊龍", duration: "3:20", src: "/music/一点点.mp3", cover: "cover/dj.webp" },
+            { id: 5, title: "恋人", artist: "李荣浩", duration: "2:55", src: "/music/恋人.mp3", cover: "cover/lrh.webp" },
+            { id: 6, title: "可能", artist: "程响", duration: "4:40", src: "/music/可能.mp3", cover: "cover/cx.webp" },
+            { id: 7, title: "安静", artist: "周杰伦", duration: "5:34", src: "/music/安静.mp3", cover: "cover/zjl.webp" },
+            { id: 8, title: "句号", artist: "邓紫棋", duration: "4:40", src: "/music/句号.mp3", cover: "cover/dzq.webp" },
+            { id: 9, title: "曹操", artist: "林俊杰", duration: "4:40", src: "/music/曹操.mp3", cover: "cover/ljj.webp" },
+            { id: 10, title: "离开我的依赖", artist: "王艳薇", duration: "4:40", src: "/music/离开我的依赖.mp3", cover: "cover/yw.svg" },
+            { id: 11, title: "写不完的温柔", artist: "邓紫棋", duration: "3:58", src: "/music/写不完的温柔.mp3", cover: "cover/dzq.webp" },
+            { id: 12, title: "虹之间", artist: "金贵晟", duration: "4:06", src: "/music/虹之间.mp3", cover: "cover/gc.svg" },
+        ];
+
+        // 简化的歌词库演示 (保留了部分)
+       let lyricsDB = {
+            "1": `[00:00.00]交换余生 (No Turning Back) - 林俊杰 (JJ Lin)
+[00:01.32]词：易家扬
+[00:01.91]曲：林俊杰 JJ LIN
+[00:02.79]编曲 & 键盘 MUSIC ARRANGEMENT & KEYBOARDS：简道生Dawson Chien/蔡政勋 Andy Tsai
+[00:05.58]制作人 PRODUCER：林俊杰 JJ LIN
+[00:06.90]配唱制作 VOCAL PRODUCTION：林俊杰 JJ LIN
+[00:08.52]制作协力 PRODUCTION ASSISTANCE：黄冠龙 ALEX.D/周信廷 SHiN CHOU/蔡沛蓁
+[00:11.17]弦乐编写 STRINGS ARRANGEMENT：王韵筑 Liv Wang
+[00:12.78]弦乐 STRINGS：李琪弦乐团
+[00:13.96]吉他 GUITAR：黄冠龙 ALEX.D
+[00:14.99]低音吉他 BASS GUITAR：寗子达
+[00:16.31]鼓 DRUMS：Brendan Buckley
+[00:16.90]和声编写 BACKGROUND VOCAL ARRANGEMENT：林俊杰 JJ LIN
+[00:18.66]和声 BACKGROUND VOCALS：林俊杰 JJ LIN
+[00:19.99]录音室 RECORDING STUDIOS：JFJ SANCTUARY (Taipei)/THE JFJ LAB (Taipei)/Smile录音棚 (Beijing)/East West Studios (Los Angeles)
+[00:21.90]录音师 RECORDING ENGINEERS：林俊杰 JJ LIN/周信廷 SHiN CHOU/李杰汇/Wil Anspach
+[00:24.84]鼓组音频编辑 ADDITIONAL DRUMS ENGINEERING：Buckley Buckley
+[00:26.46]混音室 MIXING STUDIO：mixHaus (Encino, CA)
+[00:27.48]混音师 MIXING ENGINEER：Richard Furch
+[00:28.51]后期母带处理制作人 MASTERING PRODUCER：林俊杰 JJ LIN
+[00:30.87]后期母带处理录音室 MASTERING STUDIO：Bernie Grundman Mastering, LA
+[00:33.07]后期母带处理录音师 MASTERING ENGINEER：Mike Bozzi
+[00:34.99]孤单听雨的猫
+[00:37.35]往时间裂缝里看到了我
+[00:42.71]雷电交加之外的另一些我
+[00:50.07]乌云静止以后 跳进平行时空
+[00:56.29]那些我 旅行中的你我
+[01:00.25]回忆胡乱穿梭 坠落
+[01:09.40]交换余生 是我 非我 苦与乐
+[01:16.86]阴天之后总有续命的晴空
+[01:23.98]如果我们几经转折 结局一样不动
+[01:31.59]也才算无愧这分合
+[02:05.54]定位心海的锚
+[02:07.87]让时间停顿的像慢动作
+[02:13.19]你说命运很坏吧幸好有我
+[02:20.17]如果没有以后 如果平行失控
+[02:26.80]那些我 不同人生的我
+[02:30.61]会以什么方式 哭过
+[02:37.80]交换余生 是我 非我 苦与乐
+[02:45.50]阴天之后总有续命的晴空
+[02:52.75]如果我们几经转折 结局一样不动
+[03:00.38]也才算无愧这分合
+[03:07.77]云等风 人等梦 爱辗过时光等什么
+[03:15.44]记不住 认不出 泪眼中谁一样脸红
+[03:22.50]等你说 等我说 一等就是一个宇宙
+[03:29.39]日升换月落 真爱换寂寞
+[03:37.12]交换余生 也许 忘了 第几梦
+[03:44.20]那时我们身处第几号时空
+[03:51.96]因为我们手心紧握 记忆也能紧扣
+[03:59.65]可不怕前方的虫洞
+[04:07.31]爱是时间的古董`,
+            "2": `[00:00.0]如果当时 - 许嵩
+[00:03.38]词：许嵩
+[00:06.77]曲：许嵩
+[00:10.15]编曲：许嵩
+[00:13.54]为什么 你当时对我好
+[00:19.43]又为什么 现在变得冷淡了
+[00:26.03]我知道 爱要走难阻挠
+[00:32.69]反正不是我的 我也不该要
+[00:38.71]你和我 曾经有共同爱好
+[00:44.54]谁的耳边 总有绝句在萦绕
+[00:51.23]我们俩 用文言文对话真的很搞笑
+[00:58.13]还笑那曹操贪慕着小乔
+[01:04.73]天灰了 雨坠了
+[01:07.79]视线要模糊了
+[01:10.97]此时感觉到你的重要
+[01:17.26]爱走了 心走了
+[01:20.46]你说你要走了
+[01:25.24]我为你唱最后的古谣
+[01:31.479996]红雨瓢泼泛起了回忆怎么潜
+[01:37.81]你美目如当年 流转我心间
+[01:43.990005]渡口边最后一面洒下了句点
+[01:50.06]与你若只如初见
+[01:53.21]何须感伤离别
+[02:22.85]你和我 曾经有共同爱好
+[02:28.63]谁的耳边 总有绝句在萦绕
+[02:35.56]我们俩 用文言文对话真的很搞笑
+[02:42.32]还笑那曹操贪慕着小乔
+[02:48.94]天灰了 雨坠了
+[02:51.99]视线要模糊了
+[02:55.15]此时感觉到你的重要
+[03:01.55]爱走了 心走了
+[03:04.58]你说你要走了
+[03:07.81]我为你唱最后的古谣
+[03:14.02]红雨瓢泼泛起了回忆怎么潜
+[03:20.35]你美目如当年 流转我心间
+[03:26.77]渡口边最后一面洒下了句点
+[03:32.73]与你若只如初见
+[03:35.88]何须感伤离别
+[03:39.55]红雨瓢泼泛起了回忆怎么潜
+[03:45.75]你美目如当年 流转我心间
+[03:52.03]渡口边最后一面洒下了句点
+[03:57.97]与你若只如初见
+[04:01.17]何须感伤离别
+[04:29.96]红雨瓢泼泛起了回忆怎么潜
+[04:36.14]你美目如当年 流转我心间
+[04:42.52]渡口边最后一面洒下了句点
+[04:48.53]与你若只如初见
+[04:51.59]何须感伤离别`,
+            "3": `[00:00.00]遗失的心跳 - 萧亚轩 (Elva Hsiao)
+[00:04.88]词：萧亚轩
+[00:09.77]曲：Svante Halldin/Emil Tigerlantz/Per Eklund/Awa Manneh
+[00:14.65]编曲：陈星翰/林于贤
+[00:19.54]回忆上了发条
+[00:22.95]总准时报到
+[00:26.77]我让日夜颠倒
+[00:30.10]因为黑夜太难熬
+[00:34.72]总以为哭过就好
+[00:38.61]梦和现实对调
+[00:41.63]穿越了城市的喧闹
+[00:45.68]心跳却感应不到
+[00:49.04]夜太深 心跳呢
+[00:53.12]已经遗失了 不见了
+[00:57.01]爱上你 心跳呢
+[01:00.65]慢慢 停止了 不爱了
+[01:05.32]你紧紧拥抱我入睡
+[01:09.01]曾经是永恒的画面
+[01:11.85]心痛着 你的爱 残酷的纪念
+[01:27.82]散落一地拥抱
+[01:31.61]像是在宣告 不等答案揭晓
+[01:38.99]我选择潇洒走掉 把家重新打扫
+[01:47.09]用香水味盖掉
+[01:50.49]但寂寞像是一场海啸
+[01:54.26]心跳被吞噬掉
+[01:57.60]夜太深 心跳呢
+[02:01.70]已经 遗失了 不见了
+[02:05.38]爱上你 心跳呢
+[02:09.27]慢慢 停止了 不爱了
+[02:13.87]你紧紧拥抱我入睡
+[02:17.57]曾经是永恒的画面
+[02:20.43]心痛着 你的爱
+[02:24.47]残酷的纪念
+[02:29.12]你的爱已停止心跳
+[02:33.21]急救也无效
+[02:34.72]越爱越想逃跑
+[02:36.57]自由是你唯一想要
+[02:40.23]Say goodbye
+[02:43.56]夜太深 心跳呢
+[02:47.31]已经 遗失了 不见了
+[02:51.03]爱上你 心跳呢
+[02:54.97]慢慢 换谁了 心碎了
+[02:59.51]就算快乐再也找不到
+[03:03.28]就算永远变成了玩笑
+[03:06.11]我努力 找到我
+[03:10.24]遗失的心跳`,
+            "4": `[00:00.01]一点点 (为什么晚上总是有星星) - 董唧唧/芊芊龍
+[00:00.65]词：董唧唧
+[00:00.78]曲：董唧唧
+[00:00.92]制作人：Lido
+[00:00.95]编曲：Lido
+[00:00.98]混音：官硕
+[00:01.01]统筹：无线魔方
+[00:01.05]和声：董唧唧
+[00:01.08]发行：百纳娱乐
+[00:01.11]推广：麻雀音乐人
+[00:01.26]My girl
+[00:02.25]我请你再靠近我一点点
+[00:04.92]我又不是坏人
+[00:06.26]你干嘛离我那么远
+[00:08.07]My boy
+[00:08.89]我请你再过来一点点
+[00:11.28]我能听清你的心跳让我记住你的脸
+[00:15.08]为什么晚上总是有星星
+[00:17.81]为什么你的眼里总是亮晶晶
+[00:21.74]为什么可乐总是要加冰
+[00:24.60]为什么连你的心跳我都想用心听
+[00:27.91]我还是那个bad boy
+[00:29.68]我总把帽子反带
+[00:31.28]你说我这样很帅
+[00:32.91]痞痞的样子很爱baby
+[00:35.45]他们都说让我对你停止依赖
+[00:38.02]可我早就亮出底牌
+[00:39.90]I am right to you
+[00:41.83]和你在一起
+[00:43.50]的时间
+[00:44.65]被映照的天空是粉色的
+[00:48.72]不再谈论
+[00:50.08]什么永远
+[00:51.41]那些无聊的话题是大人的
+[00:55.35]为什么晚上总是有星星
+[00:58.13]为什么你的眼里总是亮晶晶
+[01:02.00]为什么可乐总是要加冰
+[01:04.84]为什么连你的心跳我都想用心听
+[01:08.46]为什么晚上总是有星星
+[01:11.59]为什么你的眼睛总是亮晶晶
+[01:15.10]为什么可乐总是要加冰
+[01:18.18]为什么连你的心跳我总想用心听
+[01:35.02]不去讲没用的道理
+[01:37.04]掏空口袋只为你
+[01:38.76]原则是无法离开你
+[01:41.41]偏爱你我不再是秘密
+[01:43.75]甜蜜溢出了眼睛
+[01:45.48]控制血糖都成了问题
+[01:49.18]和你在一起
+[01:50.73]的时间
+[01:51.77]被映照的天空是粉色的
+[01:56.00]不再谈论
+[01:57.21]什么永远
+[01:58.63]那些无聊的话题是大人的
+[02:01.98]My girl
+[02:03.37]我请你再靠近我一点点
+[02:05.72]我又不是坏人
+[02:07.03]你干嘛离我那么远
+[02:08.94]My boy
+[02:09.87]我请你再过来一点点
+[02:12.19]我能听清你的心跳让我记住你的脸
+[02:15.91]为什么晚上总是有星星
+[02:18.63]为什么你的眼里总是亮晶晶
+[02:22.16]为什么可乐总是要加冰
+[02:25.36]为什么连你的心跳我都想用心听
+[02:29.18]为什么晚上总是有星星
+[02:32.05]为什么你的眼睛总是亮晶晶
+[02:35.63]为什么可乐总是要加冰
+[02:38.76]为什么连你的心跳我总想用心听`,
+            "5": `[00:00.99]恋人 - 李荣浩
+[00:03.63]词 Lyricist：刘嘉星 Jiaxing Liu
+[00:06.18]曲 Composer：刘嘉星 Jiaxing Liu
+[00:07.90]编曲 Arrangement：李荣浩 Ronghao Li
+[00:09.75]制作人 Producer：李荣浩 Ronghao Li
+[00:11.77]吉他 Guitars：李荣浩 Ronghao Li
+[00:13.06]贝斯 BASS：李荣浩 Ronghao Li
+[00:13.33]弦乐 String：国际首席爱乐乐团 International Master Philharmonic Orchestra
+[00:15.29]和音 Backing Vocal：李荣浩 Ronghao Li
+[00:16.46]录音师 Recording Engineer：李荣浩 Ronghao Li
+[00:18.59]混音师 Mixing Engineer：李荣浩 Ronghao Li
+[00:19.63]音乐制作助理 Production Assistant：青格乐 Chingel
+[00:20.03]录音工作室 Recording Studio：北京一样音乐录音室 Beijing Young Music Studio
+[00:21.88]混音工作室 Mixing Studio：北京一样音乐录音室 Beijing Young Music Studio
+[00:23.01]母带后期制作人Mastering Producer：李荣浩 Ronghao Li
+[00:23.47]母带后期处理工程师 Mastering Engineer：周天澈 TC Z.
+[00:24.00]母带后期处理录音室 Mastering Studio：Studio 21A
+[00:25.48]爱像是一场小雨
+[00:31.32]淅沥沥淅沥沥
+[00:33.23]滴入我回忆
+[00:39.21]爱又像一场旅行
+[00:44.91]走停停走停停
+[00:46.87]忽然遇见你
+[00:50.33]停下了足迹
+[00:54.54]是否还是不太喜欢吃香菜
+[00:58.27]到现在都没改
+[01:01.40]那双原来最喜欢的匡威鞋带
+[01:05.15]现在却解不开
+[01:07.32]那张磁带一再一再
+[01:10.98]它又再一次的卡带
+[01:14.31]却还会再一遍一遍
+[01:17.83]一遍又一遍听下来
+[01:21.11]昨天的爱 已回不来
+[01:27.99]却依然在心里徘徊
+[01:31.35]却依然在心底徘徊
+[02:01.41]爱又像一场旅行
+[02:07.29]走停停走停停
+[02:09.18]忽然遇见你
+[02:12.59]停下了足迹
+[02:16.70]是否还是不太喜欢吃香菜
+[02:20.61]到现在都没改
+[02:23.59]那双原来最喜欢的匡威鞋带
+[02:27.45]现在却解不开
+[02:29.84]那张磁带一再一再
+[02:33.23]它又再一次的卡带
+[02:36.58]却还会再一遍一遍
+[02:40.07]一遍又一遍听下来
+[02:43.42]昨天的爱 已回不来
+[02:50.29]却依然在心里徘徊
+[02:53.69]却依然在心底徘徊
+[02:59.64]凶手和恋人都喜欢事后回现场
+[03:06.59]看一看自己从前到底有多疯狂
+[03:13.29]回忆里充满着罗曼蒂克的幻想
+[03:19.01]那张磁带里藏着过往
+[03:22.45]播放了就会回到现场
+[03:26.38]再一再它又再一次的卡带
+[03:31.38]却还会再一遍一遍
+[03:34.95]一遍又一遍听下来
+[03:38.31]昨天的爱 已回不来
+[03:45.13]却依然在心里徘徊
+[03:48.48]却依然在心底徘徊`,
+            "6": `[00:00.05]可能 - 程响
+[00:00.89]词Lyricist：宁缺
+[00:01.65]曲Composer：宁缺
+[00:02.41]编曲Arranger：曲比阿且
+[00:03.60]录音Recording：张雨农
+[00:04.73]混音Mixing：王朋
+[00:05.62]母带Master tape：全相彦
+[00:06.76]视觉设计Visual Design：华玮轩
+[00:08.21]宣传发行Publicity and distribution：冷小婧/杜梦婷
+[00:10.12]企划Planning：刘芳/袋熊/李思睿/威尔
+[00:11.95]音乐统筹Music co ordination：陈亚飞
+[00:13.48]营销Marketing：壳壳菠萝
+[00:14.63]项目总监Project Director：庄有豪
+[00:16.05]出品人Publisher：潘鸿业
+[00:17.21]OP：北京金翼龙国际文化传媒有限公司
+[00:19.63]「未经著作权人书面许可 不得以任何方式（包括翻唱、翻录等）使用」
+[00:26.86]可能南方的阳光 照着北方的风
+[00:31.74]可能时光被吹走 从此无影无踪
+[00:36.69]可能故事只剩下 一个难忘的人
+[00:41.56]可能在昨夜梦里 依然笑得纯真
+[00:48.81]可能北京的后海 许多漂泊的魂
+[00:53.84]可能成都小酒馆 有群孤独的人
+[00:58.70]可能枕边有微笑 才能暖你清晨
+[01:03.60]可能夜空有流星 才能照你前行
+[01:10.99]可能西安城墙上 有人誓言不分
+[01:15.85]可能要去到大理 才算爱得认真
+[01:20.73]可能谁说要陪你 牵手走完一生
+[01:25.66]可能笑着流出泪 某天在某时辰
+[01:33.66]
+[01:55.06]可能桂林有渔船 为你迷茫点灯
+[01:59.91]可能在呼伦草原 牛羊流成风景
+[02:04.81]可能再也找不到 愿意相信的人
+[02:09.62]可能穿越了彷徨 脚步才能坚定
+[02:17.12]可能武当山道上 有人虔诚攀登
+[02:22.00]可能周庄小巷里 忽然忘掉年轮
+[02:26.87]可能要多年以后 才能看清曾经
+[02:31.77]可能在当时身边 有双温柔眼睛
+[02:39.07]可能西安城墙上 有人誓言不分
+[02:44.01]可能要去到大理 才算爱得认真
+[02:48.87]可能谁说要陪你 牵手走完一生
+[02:53.77]可能笑着流出泪
+[02:58.76]可能终于有一天 刚好遇见爱情
+[03:03.61]可能永远在路上 有人奋斗前行
+[03:08.49]可能一切的可能 相信才有可能
+[03:13.36]可能拥有过梦想 才能叫做青春`,
+
+            '7': `[00:00.0]安静 - 周杰伦 (Jay Chou)
+[00:06.98]词：周杰伦
+[00:13.97]曲：周杰伦
+[00:20.95]编曲：钟兴民
+[00:27.94]只剩下钢琴陪我谈了一天
+[00:33.23]睡着的大提琴 安静的旧旧的
+[00:41.21]我想你已表现的非常明白
+[00:46.44]我懂我也知道 你没有舍不得
+[00:54.43]你说你也会难过我不相信
+[01:01.06]牵着你陪着我 也只是曾经
+[01:07.03]希望他是真的比我还要爱你
+[01:13.67]我才会逼自己离开
+[01:21.54]你要我说多难堪 我根本不想分开
+[01:28.12]为什么还要我用微笑来带过
+[01:34.8]我没有这种天份 包容你也接受他
+[01:41.41]不用担心的太多 我会一直好好过
+[01:48.15]你已经远远离开 我也会慢慢走开
+[01:54.75]为什么我连分开都迁就着你
+[02:01.56]我真的没有天份 安静的没这么快
+[02:08.23]我会学着放弃你 是因为我太爱你
+[02:28.32]只剩下钢琴陪我谈了一天
+[02:33.55]睡着的大提琴 安静的旧旧的
+[02:41.51]我想你已表现的非常明白
+[02:46.82]我懂我也知道 你没有舍不得
+[02:54.83]你说你也会难过我不相信
+[03:01.57]牵着你陪着我 也只是曾经
+[03:07.39]希望他是真的比我还要爱你
+[03:14.08]我才会逼自己离开
+[03:21.94]你要我说多难堪 我根本不想分开
+[03:28.64]为什么还要我用微笑来带过
+[03:35.3]我没有这种天份 包容你也接受他
+[03:41.94]不用担心的太多 我会一直好好过
+[03:48.68]你已经远远离开 我也会慢慢走开
+[03:55.29001]为什么我连分开都迁就着你
+[04:02.0]我真的没有天份 安静的没这么快
+[04:08.62]我会学着放弃你 是因为我太爱你
+[04:19.62]你要我说多难堪 我根本不想分开
+[04:26.16]为什么还要我用微笑来带过
+[04:32.88]我没有这种天份 包容你也接受他
+[04:39.51]不用担心的太多 我会一直好好过
+[04:46.45]你已经远远离开 我也会慢慢走开
+[04:53.11]为什么我连分开都迁就着你
+[04:59.83002]我真的没有天份 安静的没这么快
+[05:06.45]我会学着放弃你 是因为我太爱你`,
+            '8': `[ti:句号]
+[ar:G.E.M. 邓紫棋]
+[al:摩天动物园]
+[by:]
+[offset:0]
+[00:00.00]句号 - G.E.M. 邓紫棋
+[00:00.70]词：G.E.M. 邓紫棋
+[00:01.32]曲：G.E.M. 邓紫棋
+[00:01.94]编曲 Arranged by：G.E.M.邓紫棋/T-Ma 马敬恒
+[00:03.26]制作人 Producer：G.E.M.邓紫棋/T-Ma 马敬恒
+[00:04.59]和音 Bvox：G.E.M.邓紫棋
+[00:05.37]混音 Mixed by：Richard Furch
+[00:05.91]母带 Mastered by：Randy Merrill @ Sterling Sound
+[00:06.51]可惜我们终于来到 一个句号
+[00:13.18]窗外不愿飞的蜂鸟 也在哀悼
+[00:19.84]城市再也不会听到 我们争吵
+[00:26.45]你会不会少了一点烦恼
+[00:33.37]回到十二年前 回忆就在眼前
+[00:36.79]你带着帽子 而我样子 带着腼腆
+[00:39.79]不过第一次的见面 你说 你有先见
+[00:43.17]我的先天 被训练过 我能有片天
+[00:46.52]我当时天真 寡见鲜闻
+[00:49.72]不像成年人 有能力辨认
+[00:52.91]不是为了赚了有钱分
+[00:55.13]我为我的前程
+[00:56.81]希望我写的歌里面有更好的和弦声
+[00:59.85]时针滴滴答 你还记得吗
+[01:06.37]说句心里话 你还怀念吗
+[01:13.09]第一次发唱片 就一马当先
+[01:16.45]从此在大场面 我不再站旁边
+[01:19.81]我是真的感谢 佩服你的眼界
+[01:23.16]怎么想到和你是带着刺痛地完结
+[01:26.71]你看着一朵花慢慢萌芽
+[01:30.54]我却看着你意气慢慢风发
+[01:33.11]欲望聚沙成塔 价值慢慢分岔
+[01:36.47]太多失望让我对你的信任慢慢崩塌
+[01:40.02]可惜我们终于来到 一个句号
+[01:46.42]窗外不愿飞的蜂鸟 也在哀悼
+[01:53.07]城市再也不会听到 我们争吵
+[01:59.71]你会不会少了一点烦恼
+[02:06.53]时针滴滴答 你还记得吗
+[02:13.13]说句心里话 你还怀念吗
+[02:18.83]你说我是个商品
+[02:20.95]没有你我就不可以
+[02:22.61]这些扭曲的真理
+[02:23.99]差点毁掉我的自信
+[02:25.98]如今的我已觉醒 如今我不再哭泣
+[02:29.29]再不怕坚持自己
+[02:30.67]做你没做对的决定
+[02:32.67]你知道吗 这一辈子除了我的爸爸
+[02:37.18]你曾是我最信任的男人吧
+[02:39.73]但空白的娃娃 总会慢慢长大
+[02:43.10]抱歉我没法永远当你听话的傻瓜
+[02:46.22]可惜我们终于来到 一个句号
+[02:53.11]窗外不愿飞的蜂鸟 也在哀悼
+[02:59.92]城市再也不会听到 我们争吵
+[03:06.43]你会不会少了一点烦恼
+[03:15.40]多少年里 多少遍你
+[03:17.77]多少错却没多少歉意
+[03:21.90]但过去了就不再介意
+[03:23.64]把珍贵的放心里
+[03:25.16]把痛的伤的全都忘记
+[03:27.76]我青春的全部回忆
+[03:31.89]那爱的恨的全都是你
+[03:35.19]希望你偶尔也会想起
+[03:37.18]就让我真心真意
+[03:38.73]把歌唱完重新开始
+[03:40.09]时针滴滴答 你还记得吗
+[03:46.34]说句心里话 你还怀念吗
+`,
+            '9': `[00:00.0]曹操 - 林俊杰 (JJ Lin)
+[00:05.37]词：林秋离
+[00:10.74]曲：林俊杰
+[00:16.12]编曲：Kenn C
+[00:21.49]制作人：吴剑泓
+[00:26.87]不是英雄不读三国
+[00:33.58]若是英雄
+[00:36.05]怎么能不懂寂寞
+[00:39.78]独自走下长坂坡
+[00:41.65]月光太温柔
+[00:43.37]曹操不啰唆
+[00:45.01]一心要拿荆州
+[00:46.83]用阴谋阳谋
+[00:48.48]明说暗夺的摸
+[00:53.58]东汉末年分三国
+[00:56.66]烽火连天不休
+[01:00.13]儿女情长被乱世左右
+[01:05.15]谁来煮酒
+[01:06.9]尔虞我诈是三国
+[01:09.99]说不清对与错
+[01:13.5]纷纷扰扰千百年以后
+[01:18.51]一切又从头
+[01:33.58]不是英雄不读三国
+[01:40.2]若是英雄
+[01:42.78]怎么能不懂寂寞
+[01:46.509995]独自走下长坂坡
+[01:48.369995]月光太温柔
+[01:50.03]曹操不啰唆
+[01:51.69]一心要拿荆州
+[01:53.509995]用阴谋阳谋
+[01:55.17]明说暗夺的摸
+[02:00.25]东汉末年分三国
+[02:03.3]烽火连天不休
+[02:06.84]儿女情长被乱世左右
+[02:11.81]谁来煮酒
+[02:13.58]尔虞我诈是三国
+[02:16.6]说不清对与错
+[02:20.14]纷纷扰扰千百年以后
+[02:25.19]一切又从头
+[02:39.8]独自走下长坂坡
+[02:41.7]月光太温柔
+[02:43.36]曹操不啰唆
+[02:45.01]一心要拿荆州
+[02:46.83]用阴谋阳谋
+[02:48.53]明说暗夺的摸
+[02:53.44]东汉末年分三国
+[02:56.7]烽火连天不休
+[03:00.11]儿女情长被乱世左右
+[03:05.16]谁来煮酒
+[03:06.89]尔虞我诈是三国
+[03:09.98]说不清对与错
+[03:13.5]纷纷扰扰千百年以后
+[03:18.52]一切又从头`,
+            '10': `[00:00.0]离开我的依赖 (Leaving) - 王艳薇
+[00:02.51]词：王艳薇
+[00:03.32]曲：王艳薇
+[00:10.31]说不出你的轮廓
+[00:17.47]想着你的模样
+[00:25.0]眼前的美风雨冲淡了它
+[00:32.72]看天色渐暗了
+[00:40.56]好陌生的一句话
+[00:47.56]你看着我说话
+[00:55.37]我蒙上了眼
+[00:59.29]仿佛你在身旁
+[01:02.94]当你不再应答
+[01:09.95]我来不及道声不安
+[01:12.91]有点混乱有点缓慢
+[01:16.69]才发现承诺是谎话
+[01:20.6]你倒下了我只能旁观
+[01:24.42]我越来越爱
+[01:26.75]爱不爱
+[01:28.51]都成为我们的负担
+[01:32.03]我想要痛快的离开我的依赖
+[01:49.130005]一句句你的责骂
+[01:55.96]是存在的代价
+[02:03.89]不想让我慌乱认痛责备的话
+[02:11.46]看天再一次暗了
+[02:18.23]我来不及道声不安
+[02:21.59]有点混乱有点缓慢
+[02:25.4]才发现承诺是谎话
+[02:29.29001]你倒下了我只能旁观
+[02:33.11]我越来越爱
+[02:35.4]爱不爱
+[02:37.1]都成为我们的负担
+[02:40.68]我想要痛快的离开我的依赖
+[02:48.63]多少个忍受痛的夜晚你叫我别回来
+[02:56.12]我挣扎看你的脸憔悴的心怎放得开
+[03:07.39]我来不及道声不安
+[03:10.98]有点混乱有点缓慢
+[03:14.83]才发现承诺是谎话
+[03:18.67]你倒下了我只能旁观
+[03:22.5]我越来越爱
+[03:24.84]爱不爱
+[03:26.54001]都成为我们的负担
+[03:30.05]我想要痛快的离开我的依赖
+[03:37.76]我想要痛快的离开我的依赖`,
+            '11': `[00:00.0]写不完的温柔 (《Where Did You Go》国语版) - G.E.M. 邓紫棋
+[00:06.45]词：G.E.M. 邓紫棋/Tan Chang
+[00:09.14]曲：陶山
+[00:10.77]编曲：雷颂德
+[00:13.59]OP：蜂鸟音乐
+[00:16.55]SP：百纳娱乐
+[00:19.78]监制：雷颂德
+[00:23.67]还记得我曾经
+[00:25.3]天真相信
+[00:26.79]爱能永无止境
+[00:29.34]永远不要分离
+[00:31.14]说得真心
+[00:32.62]只不过太年轻
+[00:35.34]原来爱情就像
+[00:36.88]写一首歌一样
+[00:38.38]需要灵感
+[00:41.6]感觉变淡 就写不完 不能勉强
+[00:47.43]可是 有一种感受
+[00:50.4]一直 旋绕在心头
+[00:53.31]最后我却开不了口
+[00:58.87]我的心在颤抖
+[01:01.75]你一直是最温柔
+[01:04.02]钢琴上的手也在颤抖
+[01:07.63]其实该不该放手
+[01:10.979996]我在颤抖 最可惜的理由
+[01:15.75]是你怎么能够
+[01:17.89]分开时候 依然温柔
+[01:28.020004]你被眼泪淹没
+[01:29.72]还对我说 这不是谁的错
+[01:33.84]你忍住了难过
+[01:35.55]放下承诺 保护伤你的我
+[01:39.68]现在我终于学懂
+[01:41.29]让心最沉重
+[01:42.84]是你的痛
+[01:45.82]最痛的痛 竟然由我 一手放纵
+[01:51.94]其实 有一种感受
+[01:54.759995]一直 旋绕在心头
+[01:57.72]最后我却开不了口
+[02:03.12]我的心在颤抖
+[02:06.19]你一直是最温柔
+[02:08.41]钢琴上的手也在颤抖
+[02:11.98]其实该不该放手
+[02:15.28]我在颤抖 最可惜的理由
+[02:20.09]是你怎么能够
+[02:22.34]分开时候
+[02:26.26]依然温柔 你最温柔
+[02:32.25]回忆里我们牵着双手
+[02:35.23]说以后一起走
+[02:37.95999]你最温柔 明明温柔
+[02:44.17]从前牵我的手
+[02:45.63]有了陌生的感受
+[02:49.66]你最温柔
+[03:01.59]我的心在颤抖
+[03:04.79]你一直是最温柔
+[03:07.0]钢琴上的手也在颤抖
+[03:10.53]其实该不该放手
+[03:13.88]我在颤抖 最可惜的理由
+[03:18.65]是你怎么能够
+[03:20.85]依然温柔
+[03:24.98]我的心在颤抖
+[03:28.11]你一直是最温柔
+[03:30.39]钢琴上的手也在颤抖
+[03:33.89]其实该不该放手
+[03:37.19]我在颤抖 最可惜的理由
+[03:42.09]是你怎么能够
+[03:44.19]分开时候
+[03:47.82]依然温柔`,
+            '12': `[ti:虹之间 (《爱情公寓4》电视剧插曲)]
+[ar:金贵晟]
+[al:I Believe爱不离]
+[by:]
+[offset:0]
+[00:00.00]虹之间 - 金贵晟 (Joshua Jin)
+[00:11.02]词：大风刮过/韦正
+[00:22.05]曲：金贵晟
+[00:33.07]编曲：金贵晟
+[00:44.10]想借天使的翅膀
+[00:47.67]抓住云端的彩虹
+[00:53.51]总在将要触碰时消散
+[00:57.76]错觉的地久天长
+[01:01.33]其实是一无所有
+[01:09.09]童话说雨后会有一道彩虹
+[01:16.13]却不曾说过它也会转瞬成空
+[01:23.07]想要把绚烂紧紧握在手中
+[01:30.07]忽然发现你已不见
+[02:06.40]站在无尽红尘中
+[02:09.87]仰望曾有你的苍穹
+[02:15.81]得到以后转眼又落空
+[02:20.11]究竟什么是永恒
+[02:23.51]都无法拥有完整
+[02:28.63]Oh my love
+[02:31.42]我看见希望闪耀在虹之间
+[02:38.64]光芒凝结于你我的那片天
+[02:45.45]不再追问你为何不能停留
+[02:52.31]微笑看见爱的浮现
+[02:58.86]雨后的天空中又出现彩虹
+[03:06.01]天使的恩惠亲吻着世间万众
+[03:12.89]不再追问你为何不能停留
+[03:19.45]放下了执念微笑现在
+`,
+            "default": `[00:00.00] 纯音乐 / 暂无歌词
+[00:05.00] Star Music 沉浸式听觉
+[00:10.00] 请上传 LRC 文件以显示歌词`
+        };
+
+        // ----------------------------------------------------
+        // 核心逻辑
+        // ----------------------------------------------------
+        const audio = document.getElementById('audio-core');
+        let currentIndex = 0;
+        let isPlaying = false;
+        let playMode = 0; // 0:Loop, 1:One, 2:Random
+        let currentLyrics = [];
+        
+        // DOM
+        const els = {
+            bg: document.getElementById('bg-art'),
+            cover: document.getElementById('cover-img'),
+            diskArt: document.getElementById('disk-art'),
+            diskGlow: document.getElementById('disk-glow'),
+            title: document.getElementById('track-title'),
+            artist: document.getElementById('track-artist'),
+            playBtn: document.getElementById('play-btn'),
+            playIcon: document.getElementById('icon-play'),
+            pauseIcon: document.getElementById('icon-pause'),
+            fill: document.getElementById('prog-fill'),
+            currTime: document.getElementById('curr-time'),
+            durTime: document.getElementById('dur-time'),
+            drawer: document.getElementById('playlist-drawer'),
+            list: document.getElementById('drawer-list'),
+            mainStage: document.getElementById('main-stage'),
+            viewDisk: document.getElementById('view-disk'),
+            viewLyrics: document.getElementById('view-lyrics'),
+            lyricsBox: document.getElementById('lyrics-box')
+        };
+
+        // 初始化
+        function init() {
+            initDB(); // 初始化本地存储
+            renderList();
+            loadTrack(0);
+            
+            // 绑定事件
+            els.playBtn.onclick = togglePlay;
+            document.getElementById('next-btn').onclick = nextTrack;
+            document.getElementById('prev-btn').onclick = prevTrack;
+            document.getElementById('list-btn').onclick = () => els.drawer.classList.add('open');
+            els.drawer.onclick = (e) => { if(e.target === els.drawer) els.drawer.classList.remove('open'); };
+            
+            // 切换视图 (点击中间区域)
+            els.mainStage.onclick = (e) => {
+                if(e.target.closest('.tap-hint')) return;
+                const isDisk = els.viewDisk.classList.contains('hidden');
+                if(isDisk) {
+                    // 切回唱片
+                    els.viewDisk.classList.remove('hidden');
+                    els.viewLyrics.classList.remove('show');
+                } else {
+                    // 切到歌词
+                    els.viewDisk.classList.add('hidden');
+                    els.viewLyrics.classList.add('show');
+                    // 滚动到当前歌词
+                    scrollToActiveLyric();
+                }
+            };
+            
+            // 进度条拖动
+            document.getElementById('prog-wrap').onclick = (e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const pct = (e.clientX - rect.left) / rect.width;
+                audio.currentTime = pct * audio.duration;
+            };
+
+            // 上传
+            document.getElementById('upload-trigger').onclick = () => document.getElementById('file-input').click();
+            document.getElementById('file-input').onchange = handleUpload;
+            
+            // 换肤
+            document.getElementById('theme-btn').onclick = () => {
+                const colors = ['#ccff00', '#00ffcc', '#ff0055', '#cc00ff', '#ffcc00'];
+                const curr = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+                let next = colors[(colors.indexOf(curr) + 1) % colors.length] || colors[0];
+                document.documentElement.style.setProperty('--primary', next);
+                document.documentElement.style.setProperty('--primary-dim', next + '1a'); // 10% opacity
+                showToast('主题色已切换');
+            };
+        }
+
+        // ----------------------------------------------------
+        // 播放器核心
+        // ----------------------------------------------------
+        function loadTrack(idx) {
+            if(idx < 0) idx = playlist.length - 1;
+            if(idx >= playlist.length) idx = 0;
+            currentIndex = idx;
+            const track = playlist[idx];
+
+            audio.src = track.src;
+            els.title.innerText = track.title;
+            els.artist.innerText = track.artist;
+            els.durTime.innerText = track.duration;
+            
+            // 图片处理
+            const img = track.cover || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCI+PHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjMzMzIi8+PC9zdmc+';
+            els.cover.src = img;
+            els.bg.style.backgroundImage = `url(${img})`;
+
+            // 歌词处理
+            const lrcTxt = lyricsDB[track.id] || lyricsDB["default"];
+            currentLyrics = parseLyrics(lrcTxt);
+            renderLyricsDOM();
+
+            renderList(); // 更新高亮
+            
+            if(isPlaying) audio.play();
+            else updatePlayUI(false);
+        }
+
+        function togglePlay() {
+            if(audio.paused) {
+                audio.play().then(() => updatePlayUI(true)).catch(e => console.log(e));
+            } else {
+                audio.pause();
+                updatePlayUI(false);
+            }
+        }
+
+        function updatePlayUI(play) {
+            isPlaying = play;
+            if(play) {
+                els.playIcon.classList.add('hidden-el');
+                els.pauseIcon.classList.remove('hidden-el');
+                els.diskArt.classList.remove('paused');
+                els.diskGlow.style.opacity = 0.8;
+            } else {
+                els.playIcon.classList.remove('hidden-el');
+                els.pauseIcon.classList.add('hidden-el');
+                els.diskArt.classList.add('paused');
+                els.diskGlow.style.opacity = 0;
+            }
+        }
+
+        function nextTrack() { loadTrack(currentIndex + 1); }
+        function prevTrack() { loadTrack(currentIndex - 1); }
+
+        audio.ontimeupdate = () => {
+            const ct = audio.currentTime;
+            const dur = audio.duration || 1;
+            els.fill.style.width = (ct / dur) * 100 + '%';
+            
+            const min = Math.floor(ct / 60);
+            const sec = Math.floor(ct % 60);
+            els.currTime.innerText = `${min}:${sec<10?'0':''}${sec}`;
+
+            // 歌词滚动
+            updateLyrics(ct);
+        };
+        
+        audio.onended = nextTrack;
+
+        // ----------------------------------------------------
+        // 歌词逻辑
+        // ----------------------------------------------------
+        function parseLyrics(text) {
+            const lines = text.split('\n');
+            const res = [];
+            const reg = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
+            lines.forEach(l => {
+                const m = reg.exec(l);
+                if(m) {
+                    res.push({
+                        time: parseInt(m[1])*60 + parseInt(m[2]) + parseInt(m[3])/1000,
+                        text: l.replace(reg, '').trim()
+                    });
+                }
+            });
+            return res;
+        }
+
+        function renderLyricsDOM() {
+            els.lyricsBox.innerHTML = '';
+            // 前后占位
+            els.lyricsBox.innerHTML += '<div style="height:30vh"></div>';
+            currentLyrics.forEach((l, i) => {
+                const p = document.createElement('div');
+                p.className = 'lyric-line';
+                p.innerText = l.text;
+                p.dataset.time = l.time;
+                p.onclick = () => { audio.currentTime = l.time; audio.play(); };
+                els.lyricsBox.appendChild(p);
+            });
+            els.lyricsBox.innerHTML += '<div style="height:30vh"></div>';
+        }
+
+        function updateLyrics(time) {
+            // 找到当前句
+            let idx = currentLyrics.findIndex(l => l.time > time) - 1;
+            if(idx < 0) idx = currentLyrics.length > 0 && time > currentLyrics[currentLyrics.length-1].time ? currentLyrics.length-1 : -1;
+            
+            const lines = document.querySelectorAll('.lyric-line');
+            lines.forEach(l => l.classList.remove('active'));
+            
+            if(idx >= 0 && lines[idx]) {
+                lines[idx].classList.add('active');
+                // 只有在歌词视图显示时才自动滚动，避免后台计算
+                if(els.viewLyrics.classList.contains('show')) {
+                    lines[idx].scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+            }
+        }
+        
+        function scrollToActiveLyric() {
+             const active = document.querySelector('.lyric-line.active');
+             if(active) active.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+
+        // ----------------------------------------------------
+        // 列表与本地存储 (IndexedDB)
+        // ----------------------------------------------------
+        let db;
+        function initDB() {
+            const req = indexedDB.open('StarMusicMobileDB', 1);
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('tracks')) db.createObjectStore('tracks', { keyPath: 'id' });
+            };
+            req.onsuccess = (e) => {
+                db = e.target.result;
+                loadLocalTracks();
+            };
+        }
+
+        function loadLocalTracks() {
+            const tx = db.transaction('tracks', 'readonly');
+            tx.objectStore('tracks').getAll().onsuccess = (e) => {
+                const items = e.target.result;
+                items.forEach(item => {
+                    item.src = URL.createObjectURL(item.audioBlob); // 重建blob url
+                    // 这里为了简化，封面和歌词不重复存了，逻辑同电脑版
+                    playlist.push(item);
+                });
+                renderList();
+            };
+        }
+
+        function renderList() {
+            els.list.innerHTML = '';
+            document.getElementById('track-count').innerText = `${playlist.length}首`;
+            playlist.forEach((t, i) => {
+                const div = document.createElement('div');
+                div.className = `list-item ${i === currentIndex ? 'active' : ''}`;
+                div.innerHTML = `
+                    <img src="${t.cover||'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCI+PHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjMzMzIi8+PC9zdmc+'}">
+                    <div class="list-info">
+                        <h4>${t.title}</h4>
+                        <p>${t.artist}</p>
+                    </div>
+                `;
+                div.onclick = () => {
+                    loadTrack(i);
+                    audio.play();
+                    els.drawer.classList.remove('open');
+                };
+                els.list.appendChild(div);
+            });
+        }
+
+        function handleUpload(e) {
+            const files = e.target.files;
+            if(!files.length) return;
+            
+            let audioFile = null;
+            let title = "本地音乐";
+            
+            for(let f of files) {
+                if(f.type.startsWith('audio')) { audioFile = f; title = f.name.replace(/\.[^/.]+$/, ""); }
+            }
+            
+            if(audioFile) {
+                const newTrack = {
+                    id: Date.now(),
+                    title: title,
+                    artist: "本地上传",
+                    duration: "未知", // 手机端简化处理
+                    audioBlob: audioFile,
+                    cover: null 
+                };
+                
+                // 存入DB
+                const tx = db.transaction('tracks', 'readwrite');
+                tx.objectStore('tracks').add(newTrack);
+                
+                // 存入当前列表
+                newTrack.src = URL.createObjectURL(audioFile);
+                playlist.push(newTrack);
+                renderList();
+                showToast(`已添加: ${title}`);
+                loadTrack(playlist.length - 1);
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        // 启动
+        init();
+
+    </script>
+</body>
+</html>

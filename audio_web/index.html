@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Star Music | 连接中...</title>
+    <link rel="shortcut icon" href="music.ico" type="image/x-icon">
+    <style>
+        :root {
+            --primary: #ccff00;
+            --bg-dark: #0a0a0a;
+            --text-main: #ffffff;
+            --text-sub: rgba(255, 255, 255, 0.6);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-dark);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            color: var(--text-main);
+            position: relative;
+        }
+
+        /* 背景噪点 (保持风格一致) */
+        .noise {
+            position: absolute; inset: 0; z-index: 0; opacity: 0.08; pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* 呼吸的星球 */
+        .loader-container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .star-orb {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: transparent;
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 30px rgba(204, 255, 0, 0.2);
+            position: relative;
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        .star-orb::after {
+            content: '';
+            position: absolute;
+            inset: 15px;
+            background: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 50px var(--primary);
+            animation: inner-breath 2s infinite ease-in-out;
+        }
+
+        /* 文字效果 */
+        .status-text {
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            font-weight: 300;
+            color: var(--text-main);
+            text-transform: uppercase;
+            animation: text-fade 2s infinite;
+        }
+
+        .sub-text {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            margin-top: -1.5rem;
+        }
+
+        /* 动画关键帧 */
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(204, 255, 0, 0.7); opacity: 1; }
+            50% { transform: scale(1.1); box-shadow: 0 0 20px 10px rgba(204, 255, 0, 0); opacity: 0.8; }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(204, 255, 0, 0); opacity: 1; }
+        }
+
+        @keyframes inner-breath {
+            0%, 100% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes text-fade {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+    </style>
+    <script>
+        function redirect() {
+            // 这里填写你实际的文件名
+            // 比如电脑版叫 pc.html，手机版叫 mobile.html
+            const mobileUrl = 'music_mobile.html'; 
+            const pcUrl = 'music_pc.html';       
+
+            const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent) 
+                             || window.matchMedia("(max-width: 768px)").matches;
+
+            // 设置 1.5秒 的延迟，让用户看完这个帅气的动画
+            setTimeout(() => {
+                if (isMobile) {
+                    window.location.replace(mobileUrl);
+                } else {
+                    window.location.replace(pcUrl);
+                }
+            }, 1500); 
+        }
+
+        // 页面加载完成后立即执行检测
+        window.onload = redirect;
+    </script>
+</head>
+<body>
+    <div class="noise"></div>
+
+    <div class="loader-container">
+        <div class="star-orb"></div>
+        <div class="status-text">Connecting to Starry Sky</div>
+        <div class="sub-text">正在连接星空...</div>
+    </div>
+</body>
+</html>
