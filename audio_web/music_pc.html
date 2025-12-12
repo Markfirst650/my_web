@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Star Music Pro | 沉浸式听觉</title>
     <link rel="shortcut icon" href="music.ico" type="image/x-icon">
+    <!-- 引入 MD5 库用于 Navidrome/Subsonic 认证 -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+
     
     <style>
         :root {
@@ -22,6 +25,12 @@
             --transition-smooth: cubic-bezier(0.34, 1.56, 0.64, 1); /* 弹性回弹 */
             --transition-standard: cubic-bezier(0.4, 0, 0.2, 1);
         }
+        /* 新增：编辑按钮悬停效果 */
+#edit-btn:hover {
+    opacity: 1 !important;
+    color: var(--primary);
+    transform: scale(1.1);
+}
 
         * {
             box-sizing: border-box;
@@ -518,7 +527,29 @@
             transform: translateY(-2px);
         }
 
-        /* --- 上传弹窗 --- */
+        /* Navidrome 连接按钮样式 */
+        .btn-navidrome {
+            width: 100%;
+            padding: 1.2rem;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-navidrome:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        /* --- 通用弹窗 --- */
         .upload-modal {
             position: fixed; inset: 0;
             background: rgba(0,0,0,0.8);
@@ -619,10 +650,15 @@
                 </div>
             </div>
 
-            <div class="track-info">
-                <h1 id="current-title" class="track-title">Loading...</h1>
-                <p id="current-artist" class="track-artist">Star Audio</p>
-            </div>
+           <div class="track-info">
+    <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+        <h1 id="current-title" class="track-title">Loading...</h1>
+        <button id="edit-btn" class="btn-sm" title="编辑当前歌曲信息" style="background:none; border:none; cursor:pointer; opacity:0.6; transition:0.3s;">
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        </button>
+    </div>
+    <p id="current-artist" class="track-artist">Star Audio</p>
+</div>
 
             <div class="progress-area" id="progress-area">
                 <div class="progress-bg">
@@ -687,6 +723,10 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
                 上传本地歌曲
             </button>
+            <button id="open-navidrome-modal" class="btn-navidrome">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z"/></svg>
+                连接 Navidrome
+            </button>
         </div>
     </div>
 
@@ -728,11 +768,82 @@
         </div>
     </div>
 
-    <!-- 5. 提示框 -->
+    <!-- 5. Navidrome 连接弹窗 -->
+    <div id="navidrome-modal" class="upload-modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom:1.5rem">连接 Navidrome 服务器</h2>
+            <p style="color:var(--text-sub); margin-bottom:1.5rem; font-size:0.9rem;">
+                请确保您的服务器支持 CORS 跨域访问，否则无法连接。<br>
+                我们将使用 Subsonic API 获取随机歌曲。
+            </p>
+            
+            <div class="form-group">
+                <label>服务器地址 (如: https://music.example.com)</label>
+                <input type="text" id="nd-url" class="form-input" placeholder="https://...">
+            </div>
+            
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" id="nd-user" class="form-input">
+            </div>
+
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="nd-pass" class="form-input">
+                <div style="font-size:0.75rem; color:rgba(255,59,48,0.7); margin-top:5px;">
+                    * 密码将以明文存储在浏览器本地，请勿在公共设备使用
+                </div>
+            </div>
+
+            <!-- 新增：获取数量设置 -->
+            <div class="form-group">
+                <label>获取随机歌曲数量 (默认 50)</label>
+                <input type="number" id="nd-count" class="form-input" value="50" min="1" max="500">
+            </div>
+
+            <div class="modal-actions">
+                <button id="cancel-navidrome" class="btn-modal btn-cancel">取消</button>
+                <button id="confirm-navidrome" class="btn-modal btn-confirm">连接并获取</button>
+            </div>
+        </div>
+    </div>
+    <div id="edit-modal" class="upload-modal">
+    <div class="modal-content">
+        <h2 style="margin-bottom:1.5rem">编辑歌曲信息</h2>
+        
+        <div style="display:flex; gap:1rem;">
+            <div class="form-group" style="flex:1">
+                <label>歌名</label>
+                <input type="text" id="edit-title" class="form-input">
+            </div>
+            <div class="form-group" style="flex:1">
+                <label>歌手</label>
+                <input type="text" id="edit-artist" class="form-input">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>更换封面 (留空则不修改)</label>
+            <input type="file" id="edit-cover" accept="image/*" class="form-input">
+        </div>
+
+        <div class="form-group">
+            <label>更换/上传歌词 (.lrc) (留空则不修改)</label>
+            <input type="file" id="edit-lrc" accept=".lrc" class="form-input">
+        </div>
+
+        <div class="modal-actions">
+            <button id="cancel-edit" class="btn-modal btn-cancel">取消</button>
+            <button id="confirm-edit" class="btn-modal btn-confirm">保存修改</button>
+        </div>
+    </div>
+</div>
+
+    <!-- 6. 提示框 -->
     <div id="toast" class="toast">提示信息</div>
     
     <!-- 音频核心 -->
-    <audio id="audio-core"></audio>
+    <audio id="audio-core" crossorigin="anonymous"></audio>
 
     <script>
         // --- 核心数据 (预置歌曲) ---
@@ -1612,8 +1723,8 @@
                 div.innerHTML = innerHTML;
 
                 // 只有 id 是长字符串（时间戳）的才是本地上传的，才允许删除
-                // 简单的判断：预设歌曲ID是数字，本地歌曲ID是时间戳字符串
-                if (typeof track.id === 'string' && track.id.length > 8) {
+                // 简单的判断：预设歌曲ID是数字，本地歌曲ID是时间戳字符串，Navidrome是 'navidrome_' 开头
+                if (typeof track.id === 'string' && !track.id.startsWith('navidrome_') && track.id.length > 8) {
                     const delBtn = document.createElement('button');
                     delBtn.className = 'btn-delete';
                     delBtn.title = "删除歌曲";
@@ -1653,7 +1764,7 @@
             }
 
             // 从 IndexedDB 删除
-            if(typeof trackToDelete.id === 'string') {
+            if(typeof trackToDelete.id === 'string' && !trackToDelete.id.startsWith('navidrome_')) {
                 deleteTrackFromDB(trackToDelete.id);
             }
 
@@ -1804,6 +1915,103 @@
             processUpload();
         };
 
+        // --- Navidrome / Subsonic 连接逻辑 ---
+        const navidromeModal = document.getElementById('navidrome-modal');
+        const openNavidromeBtn = document.getElementById('open-navidrome-modal');
+        const cancelNavidromeBtn = document.getElementById('cancel-navidrome');
+        const confirmNavidromeBtn = document.getElementById('confirm-navidrome');
+
+        // 从 LocalStorage 加载之前的配置
+        const savedNdUrl = localStorage.getItem('star_nd_url');
+        const savedNdUser = localStorage.getItem('star_nd_user');
+        // 新增：加载密码和数量
+        const savedNdPass = localStorage.getItem('star_nd_pass');
+        const savedNdCount = localStorage.getItem('star_nd_count');
+
+        if (savedNdUrl) document.getElementById('nd-url').value = savedNdUrl;
+        if (savedNdUser) document.getElementById('nd-user').value = savedNdUser;
+        if (savedNdPass) document.getElementById('nd-pass').value = savedNdPass;
+        if (savedNdCount) document.getElementById('nd-count').value = savedNdCount;
+
+        openNavidromeBtn.onclick = () => navidromeModal.classList.add('show');
+        cancelNavidromeBtn.onclick = () => navidromeModal.classList.remove('show');
+
+        // 生成 Subsonic Token (MD5)
+        function generateSubsonicAuth(password) {
+            const salt = Math.random().toString(36).substring(2, 12);
+            const token = md5(password + salt);
+            return `&u=${document.getElementById('nd-user').value}&t=${token}&s=${salt}&v=1.16.1&c=StarMusic&f=json`;
+        }
+
+        // Navidrome 连接并获取
+        confirmNavidromeBtn.onclick = async () => {
+            const url = document.getElementById('nd-url').value.replace(/\/$/, '');
+            const user = document.getElementById('nd-user').value;
+            const pass = document.getElementById('nd-pass').value;
+            // 获取用户输入的数量，默认为50
+            const count = document.getElementById('nd-count').value || 50;
+
+            if (!url || !user || !pass) {
+                showToast("请填写所有字段");
+                return;
+            }
+
+            const authParams = generateSubsonicAuth(pass);
+            // 使用自定义的数量 count
+            const apiEndpoint = `${url}/rest/getRandomSongs.view?size=${count}${authParams}`;
+
+            showToast(`正在获取 ${count} 首歌曲...`);
+            
+            try {
+                const response = await fetch(apiEndpoint);
+                if (!response.ok) throw new Error('网络请求失败');
+                
+                const data = await response.json();
+                const songs = data['subsonic-response']?.randomSongs?.song;
+
+                if (!songs) {
+                    throw new Error('未获取到歌曲或认证失败');
+                }
+
+                // 保存所有配置到 LocalStorage
+                localStorage.setItem('star_nd_url', url);
+                localStorage.setItem('star_nd_user', user);
+                localStorage.setItem('star_nd_pass', pass); // 存储密码
+                localStorage.setItem('star_nd_count', count); // 存储数量设置
+
+                // 处理歌曲数据
+                let addedCount = 0;
+                songs.forEach(song => {
+                    const streamUrl = `${url}/rest/stream.view?id=${song.id}${authParams}`;
+                    const coverUrl = `${url}/rest/getCoverArt.view?id=${song.id}${authParams}`;
+                    
+                    // 转换时长
+                    const m = Math.floor(song.duration / 60);
+                    const s = Math.floor(song.duration % 60);
+                    const durationStr = `${m}:${s<10?'0':''}${s}`;
+
+                    playlist.push({
+                        id: `navidrome_${song.id}`,
+                        title: song.title,
+                        artist: song.artist,
+                        duration: durationStr,
+                        src: streamUrl,
+                        cover: coverUrl
+                    });
+                    addedCount++;
+                });
+
+                renderDrawer();
+                showToast(`成功获取 ${addedCount} 首歌曲！`);
+                navidromeModal.classList.remove('show');
+
+            } catch (error) {
+                console.error(error);
+                showToast("连接失败: 可能是 CORS 跨域限制或密码错误");
+            }
+        };
+
+
         playBtn.onclick = () => isPlaying ? audio.pause() : playAudio();
         
         audio.onpause = () => updatePlayState(false);
@@ -1885,6 +2093,121 @@
 
         // 启动时初始化 DB -> 加载本地歌曲 -> 加载第一首
         initDB();
+        // --- 编辑功能逻辑 ---
+
+const editModal = document.getElementById('edit-modal');
+const editBtn = document.getElementById('edit-btn');
+const cancelEditBtn = document.getElementById('cancel-edit');
+const confirmEditBtn = document.getElementById('confirm-edit');
+
+// 打开编辑弹窗
+editBtn.onclick = (e) => {
+    e.stopPropagation(); // 防止触发其他点击事件
+    const track = playlist[currentIndex];
+    if (!track) return;
+
+    // 回显当前信息
+    document.getElementById('edit-title').value = track.title;
+    document.getElementById('edit-artist').value = track.artist;
+    // 清空文件选择
+    document.getElementById('edit-cover').value = "";
+    document.getElementById('edit-lrc').value = "";
+
+    editModal.classList.add('show');
+};
+
+cancelEditBtn.onclick = () => editModal.classList.remove('show');
+
+// 确认保存修改
+confirmEditBtn.onclick = async () => {
+    const track = playlist[currentIndex];
+    const newTitle = document.getElementById('edit-title').value.trim();
+    const newArtist = document.getElementById('edit-artist').value.trim();
+    const newCoverFile = document.getElementById('edit-cover').files[0];
+    const newLrcFile = document.getElementById('edit-lrc').files[0];
+
+    // 1. 更新内存中的基本信息
+    if (newTitle) track.title = newTitle;
+    if (newArtist) track.artist = newArtist;
+
+    // 2. 处理封面修改
+    if (newCoverFile) {
+        const coverUrl = await new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(newCoverFile);
+        });
+        track.cover = coverUrl;
+        // 如果之前没有 blob，这里加上以便后续存储
+        track.coverBlob = newCoverFile; 
+    }
+
+    // 3. 处理歌词修改
+    if (newLrcFile) {
+        const lrcText = await new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsText(newLrcFile);
+        });
+        // 更新全局歌词库和当前内存
+        lyricsDB[track.id] = lrcText;
+        track.lrcText = lrcText; 
+        
+        // 立即重新解析并渲染当前歌词
+        lyrics = parseLyrics(lrcText);
+        renderLyrics();
+    }
+
+    // 4. 更新界面 DOM (不中断播放)
+    document.getElementById('current-title').textContent = track.title;
+    document.getElementById('current-artist').textContent = track.artist;
+    if (newCoverFile) {
+        document.getElementById('current-cover').src = track.cover;
+        document.getElementById('bg-layer').style.backgroundImage = `url(${track.cover})`;
+    }
+    
+    // 更新侧边栏列表显示
+    renderDrawer();
+    
+    // 5. 更新 IndexedDB (如果是本地存储的歌曲)
+    // 判断依据：ID是字符串且不是 'navidrome_' 开头 (或者是以前存过的纯数字ID转为了本地对象)
+    const isLocalTrack = typeof track.id === 'string' && !track.id.startsWith('navidrome_') && track.id.length > 8;
+    
+    if (isLocalTrack) {
+        updateTrackInDB(track.id, {
+            title: track.title,
+            artist: track.artist,
+            coverBlob: newCoverFile, // 如果没选新文件，update函数里会处理
+            lrcText: track.lrcText
+        });
+    }
+
+    showToast("歌曲信息已更新");
+    editModal.classList.remove('show');
+};
+
+// 辅助函数：更新数据库中的单条记录
+function updateTrackInDB(id, changes) {
+    if (!db) return;
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.get(id);
+
+    request.onsuccess = (e) => {
+        const data = e.target.result;
+        if (data) {
+            // 合并修改
+            data.title = changes.title;
+            data.artist = changes.artist;
+            if (changes.lrcText) data.lrcText = changes.lrcText;
+            if (changes.coverBlob) data.coverBlob = changes.coverBlob; // 只有当有新文件时才覆盖
+            
+            // 写回数据库
+            store.put(data);
+            console.log("DB Updated for track:", id);
+        }
+    };
+}
         loadTrack(0);
 
     </script>
